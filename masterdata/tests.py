@@ -5,7 +5,7 @@ from django.urls import reverse
 from accounts.models import User
 
 from .factories import make_admin, make_faculty, make_section, make_student, make_subject
-from .models import FacultyAssignment, Section, Student, Subject, SubjectSection
+from .models import Faculty, FacultyAssignment, Section, Student, Subject, SubjectSection
 
 
 class MasterDataModelTests(TestCase):
@@ -165,3 +165,28 @@ class AssignmentPageTests(TestCase):
         self.client.force_login(self.faculty.user)
         response = self.client.get(reverse("attendance:select_class"))
         self.assertContains(response, self.subject.code)
+
+
+class FacultyPageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def test_create_faculty_also_creates_a_login_account(self):
+        data = {
+            "employee_id": "FAC900",
+            "name": "New Faculty",
+            "department": "Computer Science",
+            "contact_no": "9000000001",
+            "password": "pass12345",
+        }
+        response = self.client.post(reverse("masterdata:faculty_create"), data)
+        self.assertRedirects(response, reverse("masterdata:faculty_list"))
+        faculty = Faculty.objects.get(employee_id="FAC900")
+        self.assertEqual(faculty.user.role, User.FACULTY)
+        self.client.logout()
+        self.assertTrue(self.client.login(username="FAC900", password="pass12345"))
+
+    def test_faculty_list_shows_members(self):
+        make_faculty(name="Listed Faculty")
+        response = self.client.get(reverse("masterdata:faculty_list"))
+        self.assertContains(response, "Listed Faculty")
