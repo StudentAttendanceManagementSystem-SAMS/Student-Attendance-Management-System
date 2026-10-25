@@ -5,7 +5,7 @@ from django.urls import reverse
 from accounts.models import User
 
 from .factories import make_admin, make_faculty, make_section, make_student, make_subject
-from .models import FacultyAssignment, Section, Student, SubjectSection
+from .models import FacultyAssignment, Section, Student, Subject, SubjectSection
 
 
 class MasterDataModelTests(TestCase):
@@ -114,3 +114,26 @@ class SectionPageTests(TestCase):
         make_section(name="CSE-8C")
         response = self.client.get(reverse("masterdata:student_create"))
         self.assertContains(response, "CSE-8C")
+
+
+class SubjectPageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def test_subject_list_shows_subjects(self):
+        make_subject(code="UE24XX999")
+        response = self.client.get(reverse("masterdata:subject_list"))
+        self.assertContains(response, "UE24XX999")
+
+    def test_create_subject(self):
+        data = {"code": "UE24CS777", "name": "Test Subject", "semester": 4}
+        response = self.client.post(reverse("masterdata:subject_create"), data)
+        self.assertRedirects(response, reverse("masterdata:subject_list"))
+        self.assertTrue(Subject.objects.filter(code="UE24CS777").exists())
+
+    def test_duplicate_subject_code_is_rejected(self):
+        make_subject(code="UE24CS777")
+        data = {"code": "UE24CS777", "name": "Another", "semester": 4}
+        response = self.client.post(reverse("masterdata:subject_create"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Subject.objects.filter(code="UE24CS777").count(), 1)

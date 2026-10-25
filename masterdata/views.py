@@ -2,8 +2,10 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
+from accounts.permissions import AdminRequiredMixin
+
 from .forms import StudentCreateForm, StudentUpdateForm
-from .models import Section, Student
+from .models import Section, Student, Subject
 
 
 class StudentListView(ListView):
@@ -52,4 +54,22 @@ class SectionCreateView(SuccessMessageMixin, CreateView):
     extra_context = {
         "title": "Add section",
         "cancel_url": reverse_lazy("masterdata:section_list"),
+    }
+
+
+class SubjectListView(AdminRequiredMixin, ListView):
+    model = Subject
+    template_name = "masterdata/subject_list.html"
+    context_object_name = "subjects"
+
+
+class SubjectCreateView(AdminRequiredMixin, SuccessMessageMixin, CreateView):
+    model = Subject
+    fields = ["code", "name", "semester"]
+    template_name = "masterdata/form.html"
+    success_url = reverse_lazy("masterdata:subject_list")
+    success_message = "Subject added."
+    extra_context = {
+        "title": "Add subject",
+        "cancel_url": reverse_lazy("masterdata:subject_list"),
     }

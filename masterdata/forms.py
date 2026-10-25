@@ -3,7 +3,7 @@ from django.db import transaction
 
 from accounts.models import User
 
-from .models import Student
+from .models import FacultyAssignment, Student
 
 
 class StudentCreateForm(forms.ModelForm):
@@ -40,3 +40,10 @@ class StudentUpdateForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = ["name", "section", "semester", "contact_no"]
+
+
+
+class FacultyAssignmentForm(forms.ModelForm):
+    class Meta:
+        model = FacultyAssignment
+        fields = ["faculty", "subject", "section"]
