@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -23,3 +24,37 @@ class Subject(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+class Student(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="student_profile"
+    )
+    usn = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="students")
+    semester = models.PositiveSmallIntegerField()
+    contact_no = models.CharField(max_length=15, blank=True)
+
+    class Meta:
+        ordering = ["usn"]
+
+    def __str__(self):
+        return f"{self.usn} - {self.name}"
+
+
+class Faculty(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="faculty_profile"
+    )
+    employee_id = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    department = models.CharField(max_length=100)
+    contact_no = models.CharField(max_length=15, blank=True)
+
+    class Meta:
+        ordering = ["employee_id"]
+        verbose_name_plural = "faculty"
+
+    def __str__(self):
+        return f"{self.employee_id} - {self.name}"
