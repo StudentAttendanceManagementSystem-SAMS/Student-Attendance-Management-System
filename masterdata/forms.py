@@ -3,7 +3,7 @@ from django.db import transaction
 
 from accounts.models import User
 
-from .models import FacultyAssignment, Student
+from .models import Faculty, FacultyAssignment, Student
 
 
 class StudentCreateForm(forms.ModelForm):
@@ -47,3 +47,31 @@ class FacultyAssignmentForm(forms.ModelForm):
     class Meta:
         model = FacultyAssignment
         fields = ["faculty", "subject", "section"]
+
+
+
+class FacultyCreateForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput, min_length=8)
+
+    class Meta:
+        model = Faculty
+        fields = ["employee_id", "name", "department", "contact_no"]
+
+    def clean_employee_id(self):
+        employee_id = self.cleaned_data["employee_id"].strip().upper()
+        if User.objects.filter(username=employee_id).exists():
+            raise forms.ValidationError("An account with this employee ID already exists.")
+        return employee_id
+
+    @transaction.atomic
+    def save(self, commit=True):
+        user = User.objects.create_user(
+            username=self.cleaned_data["employee_id"],
+            password=self.cleaned_data["password"],
+            role=User.FACULTY,
+        )
+        faculty = super().save(commit=False)
+        faculty.user = user
+        if commit:
+            faculty.save()
+        return faculty
