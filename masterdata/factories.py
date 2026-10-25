@@ -61,3 +61,10 @@ def make_assignment(faculty=None, subject=None, section=None):
         subject=subject or make_subject(),
         section=section or make_section(),
     )
+
+
+def make_admin(**kwargs):
+    n = next(_counter)
+    defaults = {"username": f"admin{n}", "password": PASSWORD_HASH, "role": User.ADMIN}
+    defaults.update(kwargs)
+    return User.objects.create(**defaults)
