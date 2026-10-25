@@ -3,7 +3,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
 from .forms import StudentCreateForm, StudentUpdateForm
-from .models import Student
+from .models import Section, Student
 
 
 class StudentListView(ListView):
@@ -35,3 +35,9 @@ class StudentUpdateView(SuccessMessageMixin, UpdateView):
         "title": "Edit student",
         "cancel_url": reverse_lazy("masterdata:student_list"),
     }
+
+
+class SectionListView(ListView):
+    model = Section
+    template_name = "masterdata/section_list.html"
+    context_object_name = "sections"
