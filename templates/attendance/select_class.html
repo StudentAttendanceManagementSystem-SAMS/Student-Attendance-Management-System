@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Select Class{% endblock %}
+{% block content %}
+<h1>Select Class</h1>
+<ul>
+  {% for assignment in assignments %}
+    <li>{{ assignment.subject.code }} - {{ assignment.subject.name }} ({{ assignment.section.name }})</li>
+  {% empty %}
+    <li>No assigned classes.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

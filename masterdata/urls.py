@@ -12,4 +12,6 @@ urlpatterns = [
     path("sections/add/", views.SectionCreateView.as_view(), name="section_create"),
     path("subjects/", views.SubjectListView.as_view(), name="subject_list"),
     path("subjects/add/", views.SubjectCreateView.as_view(), name="subject_create"),
+    path("assignments/", views.FacultyAssignmentListView.as_view(), name="assignment_list"),
+    path("assignments/add/", views.FacultyAssignmentCreateView.as_view(), name="assignment_create"),
 ]
