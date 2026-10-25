@@ -81,3 +81,25 @@ class StudentPageTests(TestCase):
         self.assertRedirects(response, reverse("masterdata:student_list"))
         student.refresh_from_db()
         self.assertEqual(student.section, new_section)
+
+
+    def test_duplicate_usn_is_rejected_with_a_clear_message(self):
+        make_student(usn="PES2UG24CS901")
+        response = self.client.post(reverse("masterdata:student_create"), self.student_data())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "A student with this USN already exists.")
+        self.assertEqual(Student.objects.filter(usn="PES2UG24CS901").count(), 1)
+
+    def test_usn_is_stored_in_upper_case(self):
+        self.client.post(reverse("masterdata:student_create"), self.student_data(usn="pes2ug24cs902"))
+        self.assertTrue(Student.objects.filter(usn="PES2UG24CS902").exists())
+
+
+class SectionPageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def test_section_list_shows_sections(self):
+        make_section(name="CSE-9Z")
+        response = self.client.get(reverse("masterdata:section_list"))
+        self.assertContains(response, "CSE-9Z")

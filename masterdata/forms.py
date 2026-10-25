@@ -12,6 +12,15 @@ class StudentCreateForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = ["usn", "name", "section", "semester", "contact_no"]
+        error_messages = {
+            "usn": {"unique": "A student with this USN already exists."},
+        }
+
+    def clean_usn(self):
+        usn = self.cleaned_data["usn"].strip().upper()
+        if User.objects.filter(username=usn).exists():
+            raise forms.ValidationError("A user account with this USN already exists.")
+        return usn
 
     @transaction.atomic
     def save(self, commit=True):
