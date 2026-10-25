@@ -5,7 +5,7 @@ from django.urls import reverse
 from accounts.models import User
 
 from .factories import make_admin, make_faculty, make_section, make_student, make_subject
-from .models import FacultyAssignment, Student, SubjectSection
+from .models import FacultyAssignment, Section, Student, SubjectSection
 
 
 class MasterDataModelTests(TestCase):
@@ -103,3 +103,14 @@ class SectionPageTests(TestCase):
         make_section(name="CSE-9Z")
         response = self.client.get(reverse("masterdata:section_list"))
         self.assertContains(response, "CSE-9Z")
+
+    def test_create_section_saves_and_lists_it(self):
+        data = {"name": "CSE-7B", "semester": 5, "academic_year": "2026-27"}
+        response = self.client.post(reverse("masterdata:section_create"), data)
+        self.assertRedirects(response, reverse("masterdata:section_list"))
+        self.assertTrue(Section.objects.filter(name="CSE-7B").exists())
+
+    def test_section_appears_in_the_student_form_dropdown(self):
+        make_section(name="CSE-8C")
+        response = self.client.get(reverse("masterdata:student_create"))
+        self.assertContains(response, "CSE-8C")

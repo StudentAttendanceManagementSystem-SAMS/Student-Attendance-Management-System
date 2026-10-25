@@ -41,3 +41,15 @@ class SectionListView(ListView):
     model = Section
     template_name = "masterdata/section_list.html"
     context_object_name = "sections"
+
+
+class SectionCreateView(SuccessMessageMixin, CreateView):
+    model = Section
+    fields = ["name", "semester", "academic_year"]
+    template_name = "masterdata/form.html"
+    success_url = reverse_lazy("masterdata:section_list")
+    success_message = "Section added."
+    extra_context = {
+        "title": "Add section",
+        "cancel_url": reverse_lazy("masterdata:section_list"),
+    }
