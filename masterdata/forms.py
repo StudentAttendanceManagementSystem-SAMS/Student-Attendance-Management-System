@@ -25,3 +25,9 @@ class StudentCreateForm(forms.ModelForm):
         if commit:
             student.save()
         return student
+
+
+class StudentUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = ["name", "section", "semester", "contact_no"]

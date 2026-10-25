@@ -1,8 +1,11 @@
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.urls import reverse
 
-from .factories import make_faculty, make_section, make_student, make_subject
-from .models import FacultyAssignment, SubjectSection
+from accounts.models import User
+
+from .factories import make_admin, make_faculty, make_section, make_student, make_subject
+from .models import FacultyAssignment, Student, SubjectSection
 
 
 class MasterDataModelTests(TestCase):
@@ -37,3 +40,44 @@ class MasterDataModelTests(TestCase):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 FacultyAssignment.objects.create(faculty=faculty, subject=subject, section=section)
+
+
+class StudentPageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_admin())
+        self.section = make_section()
+
+    def student_data(self, **overrides):
+        data = {
+            "usn": "PES2UG24CS901",
+            "name": "Test Student",
+            "section": self.section.pk,
+            "semester": 3,
+            "contact_no": "9876543210",
+            "password": "pass12345",
+        }
+        data.update(overrides)
+        return data
+
+    def test_create_student_also_creates_login_account(self):
+        response = self.client.post(reverse("masterdata:student_create"), self.student_data())
+        self.assertRedirects(response, reverse("masterdata:student_list"))
+        student = Student.objects.get(usn="PES2UG24CS901")
+        self.assertEqual(student.user.role, User.STUDENT)
+        self.assertTrue(student.user.check_password("pass12345"))
+
+    def test_student_list_shows_students(self):
+        make_student(name="Listed Student")
+        response = self.client.get(reverse("masterdata:student_list"))
+        self.assertContains(response, "Listed Student")
+
+    def test_update_changes_the_section(self):
+        student = make_student()
+        new_section = make_section()
+        response = self.client.post(
+            reverse("masterdata:student_update", args=[student.pk]),
+            {"name": student.name, "section": new_section.pk, "semester": 3, "contact_no": "9000000000"},
+        )
+        self.assertRedirects(response, reverse("masterdata:student_list"))
+        student.refresh_from_db()
+        self.assertEqual(student.section, new_section)

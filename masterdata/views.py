@@ -1,8 +1,8 @@
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, ListView, UpdateView
 
-from .forms import StudentCreateForm
+from .forms import StudentCreateForm, StudentUpdateForm
 from .models import Student
 
 
@@ -21,5 +21,17 @@ class StudentCreateView(SuccessMessageMixin, CreateView):
     success_message = "Student added."
     extra_context = {
         "title": "Add student",
+        "cancel_url": reverse_lazy("masterdata:student_list"),
+    }
+
+
+class StudentUpdateView(SuccessMessageMixin, UpdateView):
+    model = Student
+    form_class = StudentUpdateForm
+    template_name = "masterdata/form.html"
+    success_url = reverse_lazy("masterdata:student_list")
+    success_message = "Student updated."
+    extra_context = {
+        "title": "Edit student",
         "cancel_url": reverse_lazy("masterdata:student_list"),
     }

@@ -5,7 +5,7 @@
 <p><a class="button" href="{% url 'masterdata:student_create' %}">Add student</a></p>
 <table>
   <thead>
-    <tr><th>USN</th><th>Name</th><th>Section</th><th>Semester</th><th>Contact</th></tr>
+    <tr><th>USN</th><th>Name</th><th>Section</th><th>Semester</th><th>Contact</th><th></th></tr>
   </thead>
   <tbody>
     {% for student in students %}
@@ -15,9 +15,10 @@
       <td>{{ student.section.name }}</td>
       <td>{{ student.semester }}</td>
       <td>{{ student.contact_no }}</td>
+      <td><a href="{% url 'masterdata:student_update' student.pk %}">Edit</a></td>
     </tr>
     {% empty %}
-    <tr><td colspan="5">No students yet.</td></tr>
+    <tr><td colspan="6">No students yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
