@@ -58,3 +58,32 @@ class Faculty(models.Model):
 
     def __str__(self):
         return f"{self.employee_id} - {self.name}"
+
+
+class SubjectSection(models.Model):
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="section_links")
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="subject_links")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["subject", "section"], name="unique_subject_section")
+        ]
+
+    def __str__(self):
+        return f"{self.subject.code} in {self.section.name}"
+
+
+class FacultyAssignment(models.Model):
+    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name="assignments")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="assignments")
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="assignments")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["faculty", "subject", "section"], name="unique_faculty_assignment"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.faculty.name}: {self.subject.code} ({self.section.name})"

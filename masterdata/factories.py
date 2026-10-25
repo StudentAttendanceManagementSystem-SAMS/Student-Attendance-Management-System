@@ -4,7 +4,7 @@ from django.contrib.auth.hashers import make_password
 
 from accounts.models import User
 
-from .models import Faculty, Section, Student, Subject
+from .models import Faculty, FacultyAssignment, Section, Student, Subject
 
 PASSWORD = "pass12345"
 PASSWORD_HASH = make_password(PASSWORD)
@@ -53,3 +53,11 @@ def make_faculty(**kwargs):
     }
     defaults.update(kwargs)
     return Faculty.objects.create(**defaults)
+
+
+def make_assignment(faculty=None, subject=None, section=None):
+    return FacultyAssignment.objects.create(
+        faculty=faculty or make_faculty(),
+        subject=subject or make_subject(),
+        section=section or make_section(),
+    )
