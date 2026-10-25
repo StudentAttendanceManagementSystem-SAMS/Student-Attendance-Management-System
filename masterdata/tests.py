@@ -137,3 +137,31 @@ class SubjectPageTests(TestCase):
         response = self.client.post(reverse("masterdata:subject_create"), data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Subject.objects.filter(code="UE24CS777").count(), 1)
+
+
+class AssignmentPageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_admin())
+        self.faculty = make_faculty()
+        self.subject = make_subject()
+        self.section = make_section()
+        self.data = {"faculty": self.faculty.pk, "subject": self.subject.pk, "section": self.section.pk}
+
+    def test_assignment_is_saved_and_listed(self):
+        response = self.client.post(reverse("masterdata:assignment_create"), self.data)
+        self.assertRedirects(response, reverse("masterdata:assignment_list"))
+        self.assertTrue(FacultyAssignment.objects.filter(faculty=self.faculty).exists())
+        listing = self.client.get(reverse("masterdata:assignment_list"))
+        self.assertContains(listing, self.faculty.name)
+
+    def test_duplicate_assignment_is_rejected(self):
+        FacultyAssignment.objects.create(faculty=self.faculty, subject=self.subject, section=self.section)
+        response = self.client.post(reverse("masterdata:assignment_create"), self.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FacultyAssignment.objects.count(), 1)
+
+    def test_assigned_class_appears_on_the_faculty_page(self):
+        FacultyAssignment.objects.create(faculty=self.faculty, subject=self.subject, section=self.section)
+        self.client.force_login(self.faculty.user)
+        response = self.client.get(reverse("attendance:select_class"))
+        self.assertContains(response, self.subject.code)

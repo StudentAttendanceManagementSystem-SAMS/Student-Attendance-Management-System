@@ -4,8 +4,8 @@ from django.views.generic import CreateView, ListView, UpdateView
 
 from accounts.permissions import AdminRequiredMixin
 
-from .forms import StudentCreateForm, StudentUpdateForm
-from .models import Section, Student, Subject
+from .forms import FacultyAssignmentForm, StudentCreateForm, StudentUpdateForm
+from .models import FacultyAssignment, Section, Student, Subject
 
 
 class StudentListView(ListView):
@@ -72,4 +72,23 @@ class SubjectCreateView(AdminRequiredMixin, SuccessMessageMixin, CreateView):
     extra_context = {
         "title": "Add subject",
         "cancel_url": reverse_lazy("masterdata:subject_list"),
+    }
+
+
+class FacultyAssignmentListView(AdminRequiredMixin, ListView):
+    model = FacultyAssignment
+    template_name = "masterdata/assignment_list.html"
+    context_object_name = "assignments"
+    queryset = FacultyAssignment.objects.select_related("faculty", "subject", "section")
+
+
+class FacultyAssignmentCreateView(AdminRequiredMixin, SuccessMessageMixin, CreateView):
+    model = FacultyAssignment
+    form_class = FacultyAssignmentForm
+    template_name = "masterdata/form.html"
+    success_url = reverse_lazy("masterdata:assignment_list")
+    success_message = "Assignment saved."
+    extra_context = {
+        "title": "Assign faculty",
+        "cancel_url": reverse_lazy("masterdata:assignment_list"),
     }
