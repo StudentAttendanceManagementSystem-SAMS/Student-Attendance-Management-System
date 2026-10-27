@@ -27,54 +27,38 @@ def select_class(request):
 
 @login_required
 def mark_attendance(request, assignment_id, on_date):
-    faculty = getattr(request.user, "faculty_profile", None)
-
-    if faculty is None:
-        raise Http404
-
     assignment = get_object_or_404(
-        FacultyAssignment.objects.select_related(
-            "subject", "section", "faculty"
-        ),
+        FacultyAssignment.objects.select_related("subject", "section", "faculty"),
         pk=assignment_id,
-        faculty=faculty,
     )
-
     try:
         day = datetime.date.fromisoformat(on_date)
     except ValueError:
         raise Http404("Invalid date")
-
-    students = Student.objects.filter(
-        section=assignment.section
-    ).order_by("usn")
-
+    students = list(Student.objects.filter(section=assignment.section).order_by("usn"))
     if request.method == "POST":
+        created = updated = 0
         for student in students:
             status = request.POST.get(f"status_{student.pk}")
-
             if status not in (Attendance.PRESENT, Attendance.ABSENT):
                 status = Attendance.ABSENT
-
-            Attendance.objects.update_or_create(
+            _, was_created = Attendance.objects.update_or_create(
                 student=student,
                 subject=assignment.subject,
                 date=day,
-                defaults={
-                    "faculty": assignment.faculty,
-                    "status": status,
-                },
+                defaults={"faculty": assignment.faculty, "status": status},
             )
-
-        messages.success(
-            request,
-            f"Attendance saved for {len(students)} students.",
-        )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+        messages.success(request, f"Attendance saved: {created} new, {updated} updated.")
         return redirect("attendance:select_class")
-
-    context = {
-        "assignment": assignment,
-        "day": day,
-        "students": students,
+    existing = {
+        record.student_id: record.status
+        for record in Attendance.objects.filter(subject=assignment.subject, date=day, student__in=students)
     }
+    for student in students:
+        student.current_status = existing.get(student.pk, Attendance.PRESENT)
+    context = {"assignment": assignment, "day": day, "students": students, "is_edit": bool(existing)}
     return render(request, "attendance/mark.html", context)

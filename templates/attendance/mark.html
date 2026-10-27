@@ -2,6 +2,7 @@
 {% block title %}Mark Attendance{% endblock %}
 {% block content %}
 <h1>{{ assignment.subject.name }} - {{ assignment.section.name }}</h1>
+{% if is_edit %}<p class="notice">Attendance for this date already exists. You are editing it.</p>{% endif %}
 <p>Date: {{ day|date:"d M Y" }}</p>
 {% if students %}
 <form method="post">
@@ -15,8 +16,8 @@
       <tr>
         <td>{{ student.usn }}</td>
         <td>{{ student.name }}</td>
-        <td><input type="radio" name="status_{{ student.pk }}" value="P" checked></td>
-        <td><input type="radio" name="status_{{ student.pk }}" value="A"></td>
+        <td><input type="radio" name="status_{{ student.pk }}" value="P"{% if student.current_status == "P" %} checked{% endif %}></td>
+        <td><input type="radio" name="status_{{ student.pk }}" value="A"{% if student.current_status == "A" %} checked{% endif %}></td>
       </tr>
       {% endfor %}
     </tbody>
