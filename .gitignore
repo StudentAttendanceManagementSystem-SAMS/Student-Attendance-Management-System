@@ -19,3 +19,7 @@ temp/
 
 # Environment secrets
 .env
+
+
+# Design Documents
+HLD_Master_Data_Management.md
