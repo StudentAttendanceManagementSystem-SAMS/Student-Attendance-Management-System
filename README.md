@@ -128,6 +128,14 @@ Open `http://127.0.0.1:8000/` in your browser
 
 ---
 
+## Sprint 1 status
+
+Delivered in Sprint 1: project scaffold and CI, custom user model with roles, login and logout, role-based access control, admin management of students, sections, subjects, faculty and assignments, attendance marking and editing, attendance percentage services, and role-based dashboard stubs.
+
+Sprint 2 covers reports, history, low-attendance monitoring, dashboards and quality work.
+
+---
+
 ## Project Team
 
 | USN | Name | Area |
