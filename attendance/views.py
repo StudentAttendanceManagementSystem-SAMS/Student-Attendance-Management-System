@@ -1,5 +1,6 @@
 import datetime
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -7,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from masterdata.models import FacultyAssignment, Student
 
 from .forms import ClassSelectForm
+from .models import Attendance
 
 
 @login_required
@@ -33,7 +35,20 @@ def mark_attendance(request, assignment_id, on_date):
         day = datetime.date.fromisoformat(on_date)
     except ValueError:
         raise Http404("Invalid date")
-    students = Student.objects.filter(section=assignment.section).order_by("usn")
+    students = list(Student.objects.filter(section=assignment.section).order_by("usn"))
+    if request.method == "POST":
+        for student in students:
+            status = request.POST.get(f"status_{student.pk}")
+            if status not in (Attendance.PRESENT, Attendance.ABSENT):
+                status = Attendance.ABSENT
+            Attendance.objects.create(
+                student=student,
+                subject=assignment.subject,
+                faculty=assignment.faculty,
+                date=day,
+                status=status,
+            )
+        messages.success(request, f"Attendance saved for {len(students)} students.")
+        return redirect("attendance:select_class")
     context = {"assignment": assignment, "day": day, "students": students}
     return render(request, "attendance/mark.html", context)
-

@@ -122,3 +122,28 @@ class RosterViewTests(TestCase):
     def test_invalid_date_returns_404(self):
         url = reverse("attendance:mark", args=[self.assignment.pk, "not-a-date"])
         self.assertEqual(self.client.get(url).status_code, 404)
+        
+class SaveAttendanceTests(TestCase):
+    def setUp(self):
+        self.section = make_section()
+        self.faculty = make_faculty()
+        self.assignment = make_assignment(self.faculty, make_subject(), self.section)
+        self.students = [make_student(section=self.section) for _ in range(3)]
+        self.client.force_login(self.faculty.user)
+        self.url = reverse("attendance:mark", args=[self.assignment.pk, "2026-10-27"])
+
+    def test_post_saves_one_record_per_student(self):
+        data = {f"status_{s.pk}": "P" for s in self.students}
+        data[f"status_{self.students[0].pk}"] = "A"
+        response = self.client.post(self.url, data)
+        self.assertRedirects(response, reverse("attendance:select_class"))
+        self.assertEqual(Attendance.objects.count(), 3)
+        self.assertEqual(Attendance.objects.get(student=self.students[0]).status, "A")
+
+    def test_records_are_linked_to_the_faculty_member(self):
+        self.client.post(self.url, {f"status_{s.pk}": "P" for s in self.students})
+        self.assertTrue(all(r.faculty == self.faculty for r in Attendance.objects.all()))
+
+    def test_missing_status_defaults_to_absent(self):
+        self.client.post(self.url, {})
+        self.assertEqual(Attendance.objects.filter(status="A").count(), 3)
