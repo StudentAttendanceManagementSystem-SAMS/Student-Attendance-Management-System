@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.urls import reverse
 
 from .models import User
 
@@ -34,3 +36,33 @@ class UserRoleTests(TestCase):
             password="pass12345",
         )
         self.assertEqual(user.role, User.ADMIN)
+
+class LoginTests(TestCase):
+    def setUp(self):
+        User.objects.create_user(
+            username="admin1",
+            password="pass12345",
+            role=User.ADMIN,
+        )
+        self.url = reverse("accounts:login")
+
+    def test_valid_login_creates_session(self):
+        response = self.client.post(
+            self.url,
+            {"username": "admin1", "password": "pass12345"},
+        )
+        self.assertRedirects(
+            response,
+            reverse(settings.LOGIN_REDIRECT_URL),
+            fetch_redirect_response=False,
+        )
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_invalid_login_shows_error_and_creates_no_session(self):
+        response = self.client.post(
+            self.url,
+            {"username": "admin1", "password": "wrong"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid username or password")
+        self.assertNotIn("_auth_user_id", self.client.session)

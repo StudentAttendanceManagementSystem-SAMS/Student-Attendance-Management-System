@@ -27,28 +27,54 @@ def select_class(request):
 
 @login_required
 def mark_attendance(request, assignment_id, on_date):
+    faculty = getattr(request.user, "faculty_profile", None)
+
+    if faculty is None:
+        raise Http404
+
     assignment = get_object_or_404(
-        FacultyAssignment.objects.select_related("subject", "section", "faculty"),
+        FacultyAssignment.objects.select_related(
+            "subject", "section", "faculty"
+        ),
         pk=assignment_id,
+        faculty=faculty,
     )
+
     try:
         day = datetime.date.fromisoformat(on_date)
     except ValueError:
         raise Http404("Invalid date")
-    students = list(Student.objects.filter(section=assignment.section).order_by("usn"))
+
+    students = Student.objects.filter(
+        section=assignment.section
+    ).order_by("usn")
+
     if request.method == "POST":
         for student in students:
             status = request.POST.get(f"status_{student.pk}")
+
             if status not in (Attendance.PRESENT, Attendance.ABSENT):
                 status = Attendance.ABSENT
-            Attendance.objects.create(
+
+            Attendance.objects.update_or_create(
                 student=student,
                 subject=assignment.subject,
-                faculty=assignment.faculty,
                 date=day,
-                status=status,
+                defaults={
+                    "faculty": assignment.faculty,
+                    "status": status,
+                },
             )
-        messages.success(request, f"Attendance saved for {len(students)} students.")
+
+        messages.success(
+            request,
+            f"Attendance saved for {len(students)} students.",
+        )
         return redirect("attendance:select_class")
-    context = {"assignment": assignment, "day": day, "students": students}
+
+    context = {
+        "assignment": assignment,
+        "day": day,
+        "students": students,
+    }
     return render(request, "attendance/mark.html", context)
