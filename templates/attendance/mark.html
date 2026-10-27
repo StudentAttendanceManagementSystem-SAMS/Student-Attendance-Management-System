@@ -3,6 +3,7 @@
 {% block content %}
 <h1>{{ assignment.subject.name }} - {{ assignment.section.name }}</h1>
 <p>Date: {{ day|date:"d M Y" }}</p>
+{% if students %}
 <form method="post">
   {% csrf_token %}
   <table>
@@ -14,7 +15,7 @@
       <tr>
         <td>{{ student.usn }}</td>
         <td>{{ student.name }}</td>
-        <td><input type="radio" name="status_{{ student.pk }}" value="P"></td>
+        <td><input type="radio" name="status_{{ student.pk }}" value="P" checked></td>
         <td><input type="radio" name="status_{{ student.pk }}" value="A"></td>
       </tr>
       {% endfor %}
@@ -22,4 +23,7 @@
   </table>
   <button type="submit">Save attendance</button>
 </form>
+{% else %}
+<p>No students are enrolled in this section.</p>
+{% endif %}
 {% endblock %}
