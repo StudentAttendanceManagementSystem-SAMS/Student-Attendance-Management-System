@@ -57,6 +57,11 @@ Course: UE24CS341A, Software Engineering, PES University
 
 ---
 
+## Attendance module
+
+Faculty open Attendance, pick an assigned subject-section and a date, and mark each student Present or Absent. Reopening the same subject, section and date loads the earlier values for editing, so one student never has two records for the same subject and day.
+---
+
 ## Project Structure
 
 ```
