@@ -1,4 +1,3 @@
-```python
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
@@ -165,4 +164,3 @@ class SaveAttendanceTests(TestCase):
         self.assertEqual(
             Attendance.objects.filter(status=Attendance.ABSENT).count(), 3
         )
-```
