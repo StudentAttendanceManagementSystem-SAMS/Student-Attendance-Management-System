@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
+from .forms import SamsAuthenticationForm
 
 app_name = "accounts"
 
@@ -9,7 +10,10 @@ urlpatterns = [
     path("", views.home, name="home"),
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="accounts/login.html"),
+        auth_views.LoginView.as_view(
+            template_name="accounts/login.html",
+            authentication_form=SamsAuthenticationForm,
+        ),
         name="login",
     ),
 ]
