@@ -1,10 +1,10 @@
 import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
 
-from masterdata.models import FacultyAssignment
+from masterdata.models import FacultyAssignment, Student
 
 from .forms import ClassSelectForm
 
@@ -25,4 +25,15 @@ def select_class(request):
 
 @login_required
 def mark_attendance(request, assignment_id, on_date):
-    return HttpResponse("Roster coming next.")
+    assignment = get_object_or_404(
+        FacultyAssignment.objects.select_related("subject", "section", "faculty"),
+        pk=assignment_id,
+    )
+    try:
+        day = datetime.date.fromisoformat(on_date)
+    except ValueError:
+        raise Http404("Invalid date")
+    students = Student.objects.filter(section=assignment.section).order_by("usn")
+    context = {"assignment": assignment, "day": day, "students": students}
+    return render(request, "attendance/mark.html", context)
+
