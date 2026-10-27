@@ -101,3 +101,24 @@ class ClassSelectionTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "No classes have been assigned")
+class RosterViewTests(TestCase):
+    def setUp(self):
+        self.section = make_section()
+        self.faculty = make_faculty()
+        self.assignment = make_assignment(self.faculty, make_subject(), self.section)
+        self.client.force_login(self.faculty.user)
+        self.url = reverse("attendance:mark", args=[self.assignment.pk, "2026-10-26"])
+
+    def test_roster_lists_every_student_in_the_section(self):
+        for _ in range(3):
+            make_student(section=self.section)
+        response = self.client.get(self.url)
+        self.assertEqual(len(response.context["students"]), 3)
+
+    def test_empty_section_shows_message(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, "No students are enrolled")
+
+    def test_invalid_date_returns_404(self):
+        url = reverse("attendance:mark", args=[self.assignment.pk, "not-a-date"])
+        self.assertEqual(self.client.get(url).status_code, 404)
