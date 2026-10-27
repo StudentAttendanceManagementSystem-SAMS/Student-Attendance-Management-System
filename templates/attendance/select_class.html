@@ -2,9 +2,12 @@
 {% block title %}Mark Attendance{% endblock %}
 {% block content %}
 <h1>My Classes</h1>
-<ul>
-  {% for item in classes %}
-  <li>{{ item.subject }} - {{ item.section }}</li>
-  {% endfor %}
-</ul>
+{% if has_assignments %}
+<form method="get">
+  {{ form.as_p }}
+  <button type="submit">Open roster</button>
+</form>
+{% else %}
+<p>No classes have been assigned to you yet.</p>
+{% endif %}
 {% endblock %}
