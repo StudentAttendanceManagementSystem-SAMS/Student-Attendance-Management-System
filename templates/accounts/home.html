@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Home{% endblock %}
@@ -19,7 +20,13 @@
             Subject-wise Attendance Report
         </a>
     </li>
+    <li>
+        <a href="{% url 'attendance:config' %}">
+            Configure Minimum Attendance Threshold
+        </a>
+    </li>
 </ul>
 {% endif %}
 
 {% endblock %}
+```
