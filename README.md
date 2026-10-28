@@ -1,159 +1,130 @@
 # Student Attendance Management System (SAMS)
 
-A web-based application to digitally manage and track student attendance, built as a college project using **Python, Django and SQLite**.
+A web-based application for recording, calculating, monitoring, and reporting student attendance. SAMS is built with Python, Django, Django templates, and SQLite for the Software Engineering course project at PES University.
 
-SAMS replaces manual, register-based attendance with role-specific dashboards for Administrators, Faculty and Students. It calculates attendance percentages automatically and flags students who fall below a configurable minimum (default 75%).
+## Delivered capabilities
 
-Course: UE24CS341A, Software Engineering, PES University
+- Authenticated access with Administrator, Faculty, and Student roles.
+- Role-specific dashboards and authorization checks.
+- Management of students, faculty, sections, subjects, and faculty assignments.
+- Faculty attendance marking and correction for assigned classes.
+- Duplicate prevention for a student's subject/date attendance record.
+- Attendance percentage calculation, including two-decimal rounding and handling of courses with no recorded classes.
+- Administrator-configurable attendance threshold (default: 75%).
+- Section-wise and subject-wise attendance reports for administrators.
+- Low-attendance identification against the configured threshold.
+- Automated Django tests and a GitHub Actions workflow.
 
----
+> Documentation and test status: the repository's last observed `develop` CI run succeeded on 2026-10-28. This is a baseline result, not evidence that the Phase 3 test plan has been executed. See `docs/RTM.md` and `docs/PHASE3_TEST_PLAN_HANDOFF.md` for evidence status and remaining validation.
 
-## Objectives
-
-1. **Digitize attendance tracking** and replace paper registers.
-2. **Provide role-based access** so Administrators, Faculty and Students each see only what they should.
-3. **Centralize master data** (students, faculty, sections, subjects) in one interface.
-4. **Simplify attendance marking** for faculty, with authorized corrections.
-5. **Automate attendance calculation**, subject-wise and overall.
-6. **Enable early intervention** by flagging students below the attendance threshold.
-7. **Support transparent reporting** scoped to each role.
-8. **Ensure data integrity and security** with authentication, server-side authorization and validation.
-9. **Keep the scope practical** for an academic project: Django and SQLite, no over-engineering.
-10. **Allow future extension** through a normalized schema and modular Django apps.
-
----
-
-## Key Features
-
-- Secure login and role-based access control (Administrator, Faculty, Student)
-- Student, faculty, section and subject management
-- Attendance marking with duplicate prevention and an authorized edit window
-- Automatic subject-wise and overall attendance percentages
-- Configurable low-attendance threshold with automatic flagging
-- Attendance reports and history, scoped by role
-- Role-specific dashboards
-- Server-side validation and error handling
-
----
-
-## Tech Stack
+## Technology stack
 
 | Layer | Technology |
 |---|---|
 | Backend | Python 3, Django |
-| Database | SQLite |
-| Frontend | Django Templates, HTML, CSS, JavaScript |
-| Authentication | Django auth and sessions |
-| Testing and CI | Django TestCase, GitHub Actions |
-| Planning | Jira (Scrum), GitHub |
+| Database | SQLite (default project configuration) |
+| UI | Django templates, HTML, CSS, JavaScript |
+| Authentication | Django authentication and sessions; custom user roles |
+| Automated tests | Django `TestCase` / `SimpleTestCase` |
+| CI | GitHub Actions (`.github/workflows/django-tests.yml`) |
+| Planning and traceability | Jira, GitHub pull requests, RTM in `docs/RTM.md` |
 
----
+## Roles and permissions
 
-## User Roles
+| Role | Main responsibilities |
+|---|---|
+| Administrator | Manage institution master data and assignments; configure the attendance threshold; view section-wise, subject-wise, and low-attendance reports. |
+| Faculty | View assigned classes; mark and correct attendance for assigned classes; view relevant attendance history and low-attendance information within authorized scope. |
+| Student | View their own attendance information and percentages. |
 
-- **Administrator:** manages students, faculty, sections, subjects and accounts; assigns faculty to classes; sets the attendance threshold; views all reports.
-- **Faculty:** views assigned classes, marks and corrects attendance, views history and reports, sees low-attendance students.
-- **Student:** views personal attendance, subject-wise and overall percentages, and history.
+Access is enforced server-side. Hiding a link in the UI is not a substitute for authorization; role-specific views must reject unauthorized users.
 
----
+## Repository layout
 
-## Attendance module
-
-Faculty open Attendance, pick an assigned subject-section and a date, and mark each student Present or Absent. Reopening the same subject, section and date loads the earlier values for editing, so one student never has two records for the same subject and day.
----
-
-## Project Structure
-
-```
-Student-Attendance-Management-System/
+```text
+.
+├── accounts/       Authentication, user roles, role permissions, tests
+├── analytics/      Attendance percentage services, reports, low-attendance logic, tests
+├── attendance/     Attendance models, marking/editing, threshold configuration, tests
+├── dashboard/     Role-specific dashboards and tests
+├── docs/           Schema notes, user guide, RTM, Phase 3 test handoff
+├── masterdata/     Students, faculty, sections, subjects, assignments, tests
+├── sams/           Django project settings and URL configuration
+├── static/         CSS, JavaScript, and static assets
+├── templates/      Django templates
 ├── manage.py
 ├── requirements.txt
-├── sams/            Django project settings
-├── accounts/        Login, roles and access control
-├── masterdata/      Students, faculty, sections, subjects, assignments
-├── attendance/      Attendance marking and editing
-├── analytics/       Percentage calculation, reports, low-attendance
-├── dashboard/       Role-specific dashboards
-├── templates/       Shared HTML templates
-└── static/          CSS, JS and static files
+└── .github/workflows/django-tests.yml
 ```
 
----
+## Setup and run locally
 
-## Database Schema (Overview)
+### Prerequisites
 
-| Entity | Key attributes |
-|---|---|
-| User | user_id (PK), username, password (hashed), role, email |
-| Student | student_id (PK), user_id (FK), USN, name, section_id (FK), semester, contact_no |
-| Faculty | faculty_id (PK), user_id (FK), employee_id, name, department, contact_no |
-| Section | section_id (PK), section_name, semester, academic_year |
-| Subject | subject_id (PK), subject_code, subject_name, semester |
-| Subject_Section | id (PK), subject_id (FK), section_id (FK) |
-| Faculty_Assignment | id (PK), faculty_id (FK), subject_id (FK), section_id (FK) |
-| Attendance | attendance_id (PK), student_id (FK), subject_id (FK), faculty_id (FK), date, status, marked_at, modified_at |
-| Attendance_Config | id (PK), threshold_percentage |
+- Python 3 and `pip`
+- Git
+- A terminal (PowerShell on Windows, or a shell on macOS/Linux)
 
-Full details are in the SRS and SAD documents.
-
----
-
-## Getting Started
-
-Requires Python 3 and pip.
+### Install
 
 ```bash
 git clone https://github.com/StudentAttendanceManagementSystem-SAMS/Student-Attendance-Management-System.git
 cd Student-Attendance-Management-System
 
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+# Windows PowerShell:
+python -m venv venv
+venv\Scripts\Activate.ps1
 
+# macOS/Linux:
+# python3 -m venv venv
+# source venv/bin/activate
+
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Open `http://127.0.0.1:8000/` in your browser
+Open `http://127.0.0.1:8000/` in a browser. Sign in with the superuser/admin credentials created during setup. Use institution-approved procedures to create the remaining users and master data.
 
----
+### Run tests
 
-## Team Workflow
+```bash
+python manage.py check
+python manage.py test
+```
 
-- **Branches:** `master` is stable and only receives `develop` at the end of a sprint. `develop` is the integration branch. Each Jira item gets its own branch, for example `feature/SAMS-14-login`.
-- **Commits:** every commit message starts with the Jira key, for example `SAMS-14: add login view and template`.
-- **Pull requests:** open into `develop`, include the Jira key in the title, and get one teammate's review before merging.
-- **Planning:** two Scrum sprints tracked in Jira. Sprint 1 covers login, roles, master data and attendance marking. Sprint 2 covers reports, low-attendance monitoring, dashboards and quality work.
+The GitHub Actions workflow should also be checked on the pull request. Do not mark a new test run as passed until its actual output or CI result is available.
 
----
+## Typical workflows
 
-## Sprint 1 status
+1. **Administrator setup:** create sections, subjects, student and faculty records; create/associate login accounts as supported by the UI; configure faculty assignments.
+2. **Attendance:** faculty select an assigned subject/section and date, then mark each student present or absent. Reopening a previously marked session should load the saved values; submitting corrections should update existing records rather than create duplicates.
+3. **Threshold:** an administrator configures the minimum attendance percentage. The model enforces a value from 0 to 100; the default is 75%.
+4. **Reports:** administrators review section-wise and subject-wise reports. Low-attendance views identify eligible students below the configured threshold, subject to the view's role-specific scope.
+5. **Students:** students sign in to review their own attendance information; they must not be able to access administrator reports or another student's private data.
 
-Delivered in Sprint 1: project scaffold and CI, custom user model with roles, login and logout, role-based access control, admin management of students, sections, subjects, faculty and assignments, attendance marking and editing, attendance percentage services, and role-based dashboard stubs.
+See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for role-specific instructions and [`docs/PHASE3_TEST_PLAN_HANDOFF.md`](docs/PHASE3_TEST_PLAN_HANDOFF.md) for the validation handoff.
 
-Sprint 2 covers reports, history, low-attendance monitoring, dashboards and quality work.
+## Development workflow
 
----
+- Create one branch per Jira item from `develop`, for example `feature/SAMS-40-attendance-threshold`.
+- Prefix commits with the Jira key, for example `SAMS-40: validate attendance threshold`.
+- Open pull requests against `develop`, summarize the change and test evidence, and obtain a teammate review before merging.
+- Do not merge a pull request until required CI checks pass and the acceptance criteria are met.
+- Update the RTM with test identifiers, execution date, result, and evidence link after running the tests. A test existing in the repository is not, by itself, proof that it passed in the current build.
 
-## Project Team
+## Project and traceability
 
-| USN | Name | Area |
-|---|---|---|
-| PES2UG24CS350 | Piyush A Patel | Attendance Engine |
-| PES2UG24CS310 | Neel Chandrakar | Master Data Management |
-| PES2UG24CS331 | Nookala Sai Tushar Krishna | Authentication and Security |
-| PES2UG24CS364 | Pranav Somashekar | Analytics, Reporting and Dashboards |
+- Course: UE24CS341A, Software Engineering, PES University.
+- SRS reference for the documentation and test handoff work item: Project Plan WBS 10.0.
+- The RTM is maintained in [`docs/RTM.md`](docs/RTM.md).
+- The Phase 3 execution and handoff checklist is maintained in [`docs/PHASE3_TEST_PLAN_HANDOFF.md`](docs/PHASE3_TEST_PLAN_HANDOFF.md).
 
----
+## Future scope
 
-## Future Scope
-
-- Email or SMS notifications for low attendance
-- Export of reports to PDF or Excel
-- Responsive, mobile-friendly interface
-- Migration from SQLite to PostgreSQL
-- QR-code-based attendance marking
+Potential extensions include report export, notifications, responsive UI improvements, QR-based attendance, and a production database deployment. These are future scope unless explicitly included in the approved requirements.
 
 ---
 
