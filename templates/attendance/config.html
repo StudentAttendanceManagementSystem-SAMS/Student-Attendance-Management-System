@@ -1,0 +1,26 @@
+
+{% extends "base.html" %}
+
+{% block title %}Attendance Threshold Settings{% endblock %}
+
+{% block content %}
+<h1>Attendance Threshold Settings</h1>
+
+<p>Configure the minimum attendance percentage required by the institution.</p>
+
+<form method="post">
+    {% csrf_token %}
+
+    {{ form.non_field_errors }}
+
+    <div>
+        {{ form.threshold_percentage.label_tag }}
+        {{ form.threshold_percentage }}
+        {{ form.threshold_percentage.errors }}
+    </div>
+
+    <button type="submit">Save Settings</button>
+</form>
+
+<p><a href="{% url 'accounts:home' %}">Back to Home</a></p>
+{% endblock %}
