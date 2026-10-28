@@ -1,6 +1,25 @@
 {% extends "base.html" %}
+
 {% block title %}Home{% endblock %}
+
 {% block content %}
 <h1>Welcome, {{ user.get_username }}</h1>
 <p>Signed in as {{ user.get_role_display }}.</p>
+
+{% if user.role == "ADMIN" %}
+<h2>Attendance Reports</h2>
+<ul>
+    <li>
+        <a href="{% url 'analytics:section_report' %}">
+            Section-wise Attendance Report
+        </a>
+    </li>
+    <li>
+        <a href="{% url 'analytics:subject_report' %}">
+            Subject-wise Attendance Report
+        </a>
+    </li>
+</ul>
+{% endif %}
+
 {% endblock %}
