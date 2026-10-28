@@ -164,3 +164,50 @@ class SaveAttendanceTests(TestCase):
         self.assertEqual(
             Attendance.objects.filter(status=Attendance.ABSENT).count(), 3
         )
+        
+class DuplicateMarkingTests(TestCase):
+    def setUp(self):
+        self.section = make_section()
+        self.faculty = make_faculty()
+        self.assignment = make_assignment(self.faculty, make_subject(), self.section)
+        self.students = [make_student(section=self.section) for _ in range(3)]
+        self.client.force_login(self.faculty.user)
+        self.url = reverse("attendance:mark", args=[self.assignment.pk, "2026-10-28"])
+
+    def test_second_submission_updates_instead_of_duplicating(self):
+        self.client.post(self.url, {f"status_{s.pk}": "P" for s in self.students})
+        self.client.post(self.url, {f"status_{s.pk}": "A" for s in self.students})
+        self.assertEqual(Attendance.objects.count(), 3)
+        self.assertEqual(Attendance.objects.filter(status="A").count(), 3)
+
+    def test_existing_values_are_shown_when_reopened(self):
+        data = {f"status_{s.pk}": "P" for s in self.students}
+        data[f"status_{self.students[1].pk}"] = "A"
+        self.client.post(self.url, data)
+        response = self.client.get(self.url)
+        self.assertContains(response, f'name="status_{self.students[1].pk}" value="A" checked')
+        self.assertContains(response, "already exists")
+        
+class AttendanceEdgeCaseTests(TestCase):
+    def setUp(self):
+        self.section = make_section()
+        self.faculty = make_faculty()
+        self.assignment = make_assignment(self.faculty, make_subject(), self.section)
+        self.student = make_student(section=self.section)
+        self.client.force_login(self.faculty.user)
+        self.url = reverse("attendance:mark", args=[self.assignment.pk, "2026-10-29"])
+
+    def test_invalid_status_value_is_saved_as_absent(self):
+        self.client.post(self.url, {f"status_{self.student.pk}": "X"})
+        self.assertEqual(Attendance.objects.get().status, Attendance.ABSENT)
+
+    def test_unknown_assignment_returns_404(self):
+        url = reverse("attendance:mark", args=[99999, "2026-10-29"])
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_marking_one_subject_does_not_touch_another(self):
+        other = make_assignment(self.faculty, make_subject(), self.section)
+        self.client.post(self.url, {f"status_{self.student.pk}": "P"})
+        other_url = reverse("attendance:mark", args=[other.pk, "2026-10-29"])
+        self.client.post(other_url, {f"status_{self.student.pk}": "A"})
+        self.assertEqual(Attendance.objects.count(), 2)

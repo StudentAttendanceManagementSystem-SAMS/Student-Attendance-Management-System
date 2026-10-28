@@ -57,6 +57,11 @@ Course: UE24CS341A, Software Engineering, PES University
 
 ---
 
+## Attendance module
+
+Faculty open Attendance, pick an assigned subject-section and a date, and mark each student Present or Absent. Reopening the same subject, section and date loads the earlier values for editing, so one student never has two records for the same subject and day.
+---
+
 ## Project Structure
 
 ```
@@ -120,6 +125,14 @@ Open `http://127.0.0.1:8000/` in your browser
 - **Commits:** every commit message starts with the Jira key, for example `SAMS-14: add login view and template`.
 - **Pull requests:** open into `develop`, include the Jira key in the title, and get one teammate's review before merging.
 - **Planning:** two Scrum sprints tracked in Jira. Sprint 1 covers login, roles, master data and attendance marking. Sprint 2 covers reports, low-attendance monitoring, dashboards and quality work.
+
+---
+
+## Sprint 1 status
+
+Delivered in Sprint 1: project scaffold and CI, custom user model with roles, login and logout, role-based access control, admin management of students, sections, subjects, faculty and assignments, attendance marking and editing, attendance percentage services, and role-based dashboard stubs.
+
+Sprint 2 covers reports, history, low-attendance monitoring, dashboards and quality work.
 
 ---
 
