@@ -8,14 +8,14 @@ from .forms import FacultyAssignmentForm, FacultyCreateForm, StudentCreateForm, 
 from .models import Faculty, FacultyAssignment, Section, Student, Subject
 
 
-class StudentListView(ListView):
+class StudentListView(AdminRequiredMixin, ListView):
     model = Student
     template_name = "masterdata/student_list.html"
     context_object_name = "students"
     queryset = Student.objects.select_related("section").order_by("usn")
 
 
-class StudentCreateView(SuccessMessageMixin, CreateView):
+class StudentCreateView(AdminRequiredMixin, SuccessMessageMixin, CreateView):
     model = Student
     form_class = StudentCreateForm
     template_name = "masterdata/form.html"
@@ -27,7 +27,7 @@ class StudentCreateView(SuccessMessageMixin, CreateView):
     }
 
 
-class StudentUpdateView(SuccessMessageMixin, UpdateView):
+class StudentUpdateView(AdminRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Student
     form_class = StudentUpdateForm
     template_name = "masterdata/form.html"
@@ -39,13 +39,13 @@ class StudentUpdateView(SuccessMessageMixin, UpdateView):
     }
 
 
-class SectionListView(ListView):
+class SectionListView(AdminRequiredMixin, ListView):
     model = Section
     template_name = "masterdata/section_list.html"
     context_object_name = "sections"
 
 
-class SectionCreateView(SuccessMessageMixin, CreateView):
+class SectionCreateView(AdminRequiredMixin, SuccessMessageMixin, CreateView):
     model = Section
     fields = ["name", "semester", "academic_year"]
     template_name = "masterdata/form.html"

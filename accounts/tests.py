@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from .models import User
 from masterdata.factories import (
+    make_admin,
     make_assignment,
     make_faculty,
     make_section,
@@ -151,3 +152,57 @@ class OwnershipTests(TestCase):
         self.assertFalse(
             student_owns_record(self.student.user, self.other_student)
         )
+class RoleAccessTests(TestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.faculty = make_faculty()
+        self.student = make_student()
+
+        self.assignment = make_assignment(
+            self.faculty,
+            make_subject(),
+            self.student.section,
+        )
+
+        self.student_list = reverse("masterdata:student_list")
+        self.mark_url = reverse(
+            "attendance:mark",
+            args=[self.assignment.pk, "2026-10-28"],
+        )
+
+    def test_admin_pages_open_for_the_administrator(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(self.student_list)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_pages_are_forbidden_for_faculty_and_students(self):
+        for user in (self.faculty.user, self.student.user):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.get(self.student_list)
+
+                self.assertEqual(response.status_code, 403)
+
+    def test_faculty_cannot_mark_an_unassigned_section(self):
+        self.client.force_login(make_faculty().user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_assigned_faculty_can_open_the_marking_page(self):
+        self.client.force_login(self.faculty.user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_student_cannot_open_the_marking_page(self):
+        self.client.force_login(self.student.user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 403)
