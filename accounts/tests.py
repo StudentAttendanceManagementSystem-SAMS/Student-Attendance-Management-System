@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from .models import User
@@ -97,3 +97,45 @@ class LogoutTests(TestCase):
     def test_session_expires_after_two_hours_of_inactivity(self):
         self.assertEqual(settings.SESSION_COOKIE_AGE, 7200)
         self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+
+class SecurityTests(TestCase):
+    def test_anonymous_users_are_redirected_to_login(self):
+        urls = [
+            reverse("accounts:home"),
+            reverse("masterdata:student_list"),
+            reverse("attendance:select_class"),
+        ]
+
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertRedirects(
+                    response,
+                    f"{reverse('accounts:login')}?next={url}",
+                    fetch_redirect_response=False,
+                )
+
+    def test_login_page_stays_public(self):
+        response = self.client.get(reverse("accounts:login"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_post_without_csrf_token_is_rejected(self):
+        strict = Client(enforce_csrf_checks=True)
+
+        response = strict.post(
+            reverse("accounts:login"),
+            {"username": "a", "password": "b"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_passwords_are_stored_hashed(self):
+        user = User.objects.create_user(
+            username="h1",
+            password="plain-pass-123",
+            role=User.STUDENT,
+        )
+
+        self.assertNotEqual(user.password, "plain-pass-123")
+        self.assertIn("$", user.password)
+        self.assertTrue(user.check_password("plain-pass-123"))
