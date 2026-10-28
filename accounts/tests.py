@@ -66,3 +66,34 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid username or password")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+class LogoutTests(TestCase):
+    def setUp(self):
+        user = User.objects.create_user(
+            username="fac1",
+            password="pass12345",
+            role=User.FACULTY,
+        )
+        self.client.force_login(user)
+
+    def test_logout_ends_the_session(self):
+        response = self.client.post(reverse("accounts:logout"))
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_protected_page_redirects_to_login_after_logout(self):
+        self.client.post(reverse("accounts:logout"))
+
+        home = reverse("accounts:home")
+        response = self.client.get(home)
+
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={home}",
+        )
+
+    def test_session_expires_after_two_hours_of_inactivity(self):
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 7200)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
