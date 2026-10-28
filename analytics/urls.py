@@ -1,3 +1,4 @@
+
 from django.urls import path
 
 from . import views
@@ -14,5 +15,10 @@ urlpatterns = [
         "subjects/",
         views.SubjectWiseReportView.as_view(),
         name="subject_report",
+    ),
+    path(
+        "below-threshold/",
+        views.BelowThresholdStudentsView.as_view(),
+        name="below_threshold",
     ),
 ]
