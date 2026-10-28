@@ -45,3 +45,12 @@ class FacultyRequiredMixin(RoleRequiredMixin):
 
 class StudentRequiredMixin(RoleRequiredMixin):
     allowed_roles = (User.STUDENT,)
+
+def faculty_owns_assignment(user, assignment):
+    profile = getattr(user, "faculty_profile", None)
+    return profile is not None and assignment.faculty_id == profile.pk
+
+
+def student_owns_record(user, student):
+    profile = getattr(user, "student_profile", None)
+    return profile is not None and student.pk == profile.pk

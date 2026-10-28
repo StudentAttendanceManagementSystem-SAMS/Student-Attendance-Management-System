@@ -7,7 +7,19 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from .models import User
-from .permissions import role_required
+from masterdata.factories import (
+    make_assignment,
+    make_faculty,
+    make_section,
+    make_student,
+    make_subject,
+)
+
+from .permissions import (
+    faculty_owns_assignment,
+    role_required,
+    student_owns_record,
+)
 
 class UserRoleTests(TestCase):
     def test_user_is_saved_with_a_role(self):
@@ -105,3 +117,37 @@ class RoleRequiredTests(TestCase):
             )
         )
         self.assertEqual(response.status_code, 200)
+
+
+class OwnershipTests(TestCase):
+    def setUp(self):
+        self.faculty = make_faculty()
+        self.other_faculty = make_faculty()
+        self.assignment = make_assignment(
+            self.faculty,
+            make_subject(),
+            make_section(),
+        )
+        self.student = make_student()
+        self.other_student = make_student()
+
+    def test_faculty_owns_only_their_own_assignment(self):
+        self.assertTrue(
+            faculty_owns_assignment(self.faculty.user, self.assignment)
+        )
+        self.assertFalse(
+            faculty_owns_assignment(self.other_faculty.user, self.assignment)
+        )
+
+    def test_student_account_never_owns_an_assignment(self):
+        self.assertFalse(
+            faculty_owns_assignment(self.student.user, self.assignment)
+        )
+
+    def test_student_owns_only_their_own_record(self):
+        self.assertTrue(
+            student_owns_record(self.student.user, self.student)
+        )
+        self.assertFalse(
+            student_owns_record(self.student.user, self.other_student)
+        )
