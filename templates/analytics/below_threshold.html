@@ -1,0 +1,40 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Students Below Attendance Threshold</h1>
+
+{% if threshold is not None %}
+<p>Required attendance: {{ threshold }}%</p>
+{% endif %}
+
+{% if students %}
+<table>
+    <thead>
+        <tr>
+            <th>USN</th>
+            <th>Student Name</th>
+            <th>Section</th>
+            <th>Present</th>
+            <th>Total Classes</th>
+            <th>Attendance (%)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in students %}
+        <tr>
+            <td>{{ item.student.usn }}</td>
+            <td>{{ item.student.name }}</td>
+            <td>{{ item.section.name }}</td>
+            <td>{{ item.present_count }}</td>
+            <td>{{ item.total_count }}</td>
+            <td>{{ item.percentage }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No students are currently below the attendance threshold.</p>
+{% endif %}
+
+{% endblock %}

@@ -28,5 +28,15 @@
 </ul>
 {% endif %}
 
+{% if user.role == "ADMIN" or user.role == "FACULTY" %}
+<h2>Attendance Monitoring</h2>
+<ul>
+    <li>
+        <a href="{% url 'analytics:below_threshold' %}">
+            Students Below Attendance Threshold
+        </a>
+    </li>
+</ul>
+{% endif %}
+
 {% endblock %}
-```

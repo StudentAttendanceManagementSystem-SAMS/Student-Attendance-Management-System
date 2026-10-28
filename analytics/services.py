@@ -1,9 +1,10 @@
+
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Count, Q
 
-from attendance.models import Attendance
-from masterdata.models import Section, Subject
+from attendance.models import Attendance, AttendanceConfig
+from masterdata.models import Section, Student, Subject
 
 
 TWO_PLACES = Decimal("0.01")
@@ -90,3 +91,42 @@ def subject_wise_report():
         }
         for subject in subjects
     ]
+
+
+def below_threshold_students():
+    threshold = AttendanceConfig.get_solo().threshold_percentage
+
+    students = Student.objects.select_related(
+        "section"
+    ).order_by("section__name", "usn")
+
+    results = []
+
+    for student in students:
+        records = Attendance.objects.filter(student=student)
+
+        total_count = records.count()
+        present_count = records.filter(
+            status=Attendance.PRESENT
+        ).count()
+
+        attendance_percentage = percentage(
+            present_count, total_count
+        )
+
+        if (
+            attendance_percentage is not None
+            and attendance_percentage < threshold
+        ):
+            results.append(
+                {
+                    "student": student,
+                    "section": student.section,
+                    "present_count": present_count,
+                    "total_count": total_count,
+                    "percentage": attendance_percentage,
+                    "threshold": threshold,
+                }
+            )
+
+    return results
