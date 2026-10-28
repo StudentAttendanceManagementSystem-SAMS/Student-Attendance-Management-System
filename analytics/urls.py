@@ -1,5 +1,18 @@
 from django.urls import path
 
+from . import views
+
 app_name = "analytics"
 
-urlpatterns = []
+urlpatterns = [
+    path(
+        "sections/",
+        views.SectionWiseReportView.as_view(),
+        name="section_report",
+    ),
+    path(
+        "subjects/",
+        views.SubjectWiseReportView.as_view(),
+        name="subject_report",
+    ),
+]
