@@ -1,16 +1,19 @@
+
 import datetime
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.views.generic import FormView
 
 from accounts.models import User
 from accounts.permissions import faculty_owns_assignment, role_required
 from masterdata.models import FacultyAssignment, Student
 
-from .forms import ClassSelectForm
-from .models import Attendance
+from .forms import AttendanceConfigForm, ClassSelectForm
+from .models import Attendance, AttendanceConfig
 
 
 @role_required(User.FACULTY)

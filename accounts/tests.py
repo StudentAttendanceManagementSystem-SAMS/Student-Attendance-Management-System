@@ -1,9 +1,10 @@
+
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from .models import User
@@ -21,6 +22,7 @@ from .permissions import (
     role_required,
     student_owns_record,
 )
+
 
 class UserRoleTests(TestCase):
     def test_user_is_saved_with_a_role(self):
@@ -52,6 +54,7 @@ class UserRoleTests(TestCase):
         )
         self.assertEqual(user.role, User.ADMIN)
 
+
 class LoginTests(TestCase):
     def setUp(self):
         User.objects.create_user(
@@ -81,6 +84,9 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid username or password")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+# RBAC decorator tests
 
 @role_required(User.ADMIN)
 def admin_only_view(request):
@@ -120,6 +126,8 @@ class RoleRequiredTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+# Ownership tests
+
 class OwnershipTests(TestCase):
     def setUp(self):
         self.faculty = make_faculty()
@@ -152,6 +160,10 @@ class OwnershipTests(TestCase):
         self.assertFalse(
             student_owns_record(self.student.user, self.other_student)
         )
+
+
+# Role-based page access tests
+
 class RoleAccessTests(TestCase):
     def setUp(self):
         self.admin = make_admin()
@@ -206,3 +218,81 @@ class RoleAccessTests(TestCase):
         response = self.client.get(self.mark_url)
 
         self.assertEqual(response.status_code, 403)
+
+
+# Logout tests
+
+class LogoutTests(TestCase):
+    def setUp(self):
+        user = User.objects.create_user(
+            username="fac1",
+            password="pass12345",
+            role=User.FACULTY,
+        )
+        self.client.force_login(user)
+
+    def test_logout_ends_the_session(self):
+        response = self.client.post(reverse("accounts:logout"))
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_protected_page_redirects_to_login_after_logout(self):
+        self.client.post(reverse("accounts:logout"))
+
+        home = reverse("accounts:home")
+        response = self.client.get(home)
+
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={home}",
+        )
+
+    def test_session_expires_after_two_hours_of_inactivity(self):
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 7200)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+
+
+# Security tests
+
+class SecurityTests(TestCase):
+    def test_anonymous_users_are_redirected_to_login(self):
+        urls = [
+            reverse("accounts:home"),
+            reverse("masterdata:student_list"),
+            reverse("attendance:select_class"),
+        ]
+
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertRedirects(
+                    response,
+                    f"{reverse('accounts:login')}?next={url}",
+                    fetch_redirect_response=False,
+                )
+
+    def test_login_page_stays_public(self):
+        response = self.client.get(reverse("accounts:login"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_post_without_csrf_token_is_rejected(self):
+        strict = Client(enforce_csrf_checks=True)
+
+        response = strict.post(
+            reverse("accounts:login"),
+            {"username": "a", "password": "b"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_passwords_are_stored_hashed(self):
+        user = User.objects.create_user(
+            username="h1",
+            password="plain-pass-123",
+            role=User.STUDENT,
+        )
+
+        self.assertNotEqual(user.password, "plain-pass-123")
+        self.assertIn("$", user.password)
+        self.assertTrue(user.check_password("plain-pass-123"))

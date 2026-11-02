@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Subject-wise Attendance Report{% endblock %}
+
+{% block content %}
+<h1>Subject-wise Attendance Report</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Subject Code</th>
+            <th>Subject Name</th>
+            <th>Semester</th>
+            <th>Sections with Records</th>
+            <th>Students with Records</th>
+            <th>Total Records</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Attendance Percentage</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in report %}
+        <tr>
+            <td>{{ row.subject.code }}</td>
+            <td>{{ row.subject.name }}</td>
+            <td>{{ row.subject.semester }}</td>
+            <td>{{ row.sections_with_records }}</td>
+            <td>{{ row.students_with_records }}</td>
+            <td>{{ row.total_records }}</td>
+            <td>{{ row.present_count }}</td>
+            <td>{{ row.absent_count }}</td>
+            <td>
+                {% if row.percentage != None %}
+                    {{ row.percentage }}%
+                {% else %}
+                    No records
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="9">No subject data is available.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
