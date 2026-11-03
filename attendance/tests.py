@@ -259,3 +259,15 @@ class AttendanceCorrectionWindowTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Attendance.objects.exists())
+        
+def test_other_faculty_cannot_submit_attendance(self):
+    other_faculty = make_faculty()
+    self.client.force_login(other_faculty.user)
+
+    response = self.client.post(
+        reverse("attendance:mark", args=[self.assignment.pk, self.today.isoformat()]),
+        {f"status_{self.student.pk}": Attendance.PRESENT},
+    )
+
+    self.assertEqual(response.status_code, 403)
+    self.assertFalse(Attendance.objects.exists())

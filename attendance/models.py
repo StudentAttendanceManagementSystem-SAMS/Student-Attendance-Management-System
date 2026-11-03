@@ -36,14 +36,70 @@ class Attendance(models.Model):
         return f"{self.student.usn} {self.subject.code} {self.date} {self.status}"
 
 
+        
 class AttendanceConfig(models.Model):
     threshold_percentage = models.PositiveSmallIntegerField(
-        default=75, validators=[MaxValueValidator(100)]
+        default=75,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
     )
     correction_window_days = models.PositiveSmallIntegerField(
-    default=1,
-    validators=[MinValueValidator(0), MaxValueValidator(365)],
-)
+        default=7,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(365),
+        ],
+        help_text=(
+            "Number of days after an attendance date during which "
+            "faculty may edit already-saved attendance."
+        ),
+    )
+    term_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="First date of the institution's active academic term.",
+    )
+    term_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last date of the institution's active academic term.",
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    threshold_percentage__gte=0,
+                    threshold_percentage__lte=100,
+                ),
+                name="attendance_threshold_0_100",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    correction_window_days__gte=0,
+                    correction_window_days__lte=365,
+                ),
+                name="attendance_correction_window_0_365",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(term_start_date__isnull=True, term_end_date__isnull=True)
+                    | models.Q(term_start_date__lte=models.F("term_end_date"))
+                ),
+                name="attendance_term_start_before_end",
+            ),
+        ]
 
     def __str__(self):
-        return f"Minimum attendance: {self.threshold_percentage}%"
+        return (
+            f"Minimum attendance: {self.threshold_percentage}% "
+            f"(correction window: {self.correction_window_days} days)"
+        )
+
+    @classmethod
+    def get_solo(cls):
+        """Return the singleton attendance configuration (primary key 1)."""
+        config, _ = cls.objects.get_or_create(pk=1)
+        return config
