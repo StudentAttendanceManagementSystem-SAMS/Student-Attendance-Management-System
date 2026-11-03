@@ -13,6 +13,10 @@ from masterdata.factories import (
 )
 
 from .models import Attendance, AttendanceConfig
+import datetime
+
+from attendance.models import Attendance, AttendanceConfig
+
 
 
 class AttendanceModelTests(TestCase):

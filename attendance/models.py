@@ -55,6 +55,10 @@ class AttendanceConfig(models.Model):
             MaxValueValidator(100),
         ],
     )
+    correction_window_days = models.PositiveSmallIntegerField(
+    default=1,
+    validators=[MinValueValidator(0), MaxValueValidator(365)],
+)
 
     class Meta:
         constraints = [
