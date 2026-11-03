@@ -40,6 +40,10 @@ class AttendanceConfig(models.Model):
     threshold_percentage = models.PositiveSmallIntegerField(
         default=75, validators=[MaxValueValidator(100)]
     )
+    correction_window_days = models.PositiveSmallIntegerField(
+    default=1,
+    validators=[MinValueValidator(0), MaxValueValidator(365)],
+)
 
     def __str__(self):
         return f"Minimum attendance: {self.threshold_percentage}%"
