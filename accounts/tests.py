@@ -197,14 +197,12 @@ class RoleAccessTests(TestCase):
                 response = self.client.get(self.student_list)
 
                 self.assertEqual(response.status_code, 403)
-
     def test_faculty_cannot_mark_an_unassigned_section(self):
         self.client.force_login(make_faculty().user)
 
         response = self.client.get(self.mark_url)
 
         self.assertEqual(response.status_code, 403)
-
     def test_assigned_faculty_can_open_the_marking_page(self):
         self.client.force_login(self.faculty.user)
 
@@ -218,7 +216,6 @@ class RoleAccessTests(TestCase):
         response = self.client.get(self.mark_url)
 
         self.assertEqual(response.status_code, 403)
-
 
 # Logout tests
 
@@ -285,7 +282,6 @@ class SecurityTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-
     def test_passwords_are_stored_hashed(self):
         user = User.objects.create_user(
             username="h1",
@@ -359,3 +355,19 @@ class RoleFlowSmokeTests(TestCase):
             ).status_code,
             403,
         )
+
+
+class CsrfRegressionTests(TestCase):
+
+    def test_login_post_without_csrf_token_is_rejected(self):
+        strict_client = Client(enforce_csrf_checks=True)
+
+        response = strict_client.post(
+            reverse("accounts:login"),
+            {
+                "username": "nobody",
+                "password": "wrong-password",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)

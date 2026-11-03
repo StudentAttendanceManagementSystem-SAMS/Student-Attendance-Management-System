@@ -122,6 +122,10 @@ See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for role-specific instructions an
 - The RTM is maintained in [`docs/RTM.md`](docs/RTM.md).
 - The Phase 3 execution and handoff checklist is maintained in [`docs/PHASE3_TEST_PLAN_HANDOFF.md`](docs/PHASE3_TEST_PLAN_HANDOFF.md).
 
+## Sprint 2 status
+
+Delivered in Sprint 2: administrator attendance reports (section-wise and subject-wise), configurable minimum attendance threshold, low-attendance student identification, overall attendance percentage calculation, authorized attendance correction window, role boundary enforcement, dashboard redirects, security regression tests, User Guide, RTM, and Phase 3 test handoff.
+
 ## Future scope
 
 Potential extensions include report export, notifications, responsive UI improvements, QR-based attendance, and a production database deployment. These are future scope unless explicitly included in the approved requirements.

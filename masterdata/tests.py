@@ -190,3 +190,30 @@ class FacultyPageTests(TestCase):
         make_faculty(name="Listed Faculty")
         response = self.client.get(reverse("masterdata:faculty_list"))
         self.assertContains(response, "Listed Faculty")
+
+
+class RoleBoundaryRegressionTests(TestCase):
+
+    def test_faculty_cannot_open_admin_student_list(self):
+        faculty = make_faculty()
+        self.client.force_login(faculty.user)
+
+        response = self.client.get(reverse("masterdata:student_list"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_student_cannot_open_admin_student_list(self):
+        student = make_student()
+        self.client.force_login(student.user)
+
+        response = self.client.get(reverse("masterdata:student_list"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_can_open_admin_student_list(self):
+        admin = make_admin()
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse("masterdata:student_list"))
+
+        self.assertEqual(response.status_code, 200)
