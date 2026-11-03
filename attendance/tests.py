@@ -2,6 +2,7 @@
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from attendance.forms import AttendanceConfigForm
 
 from masterdata.factories import (
     make_admin,
@@ -420,3 +421,23 @@ class AttendanceEdgeCaseTests(TestCase):
         )
 
         self.assertEqual(Attendance.objects.count(), 2)
+
+class AttendanceConfigBoundaryTests(TestCase):
+
+    def test_threshold_zero_is_valid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 0}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_threshold_one_hundred_is_valid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 100}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_threshold_above_one_hundred_is_invalid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 101}
+        )
+        self.assertFalse(form.is_valid())
