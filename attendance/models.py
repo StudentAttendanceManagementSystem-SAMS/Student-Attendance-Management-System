@@ -47,6 +47,7 @@ class Attendance(models.Model):
         )
 
 
+        
 class AttendanceConfig(models.Model):
     threshold_percentage = models.PositiveSmallIntegerField(
         default=75,
@@ -56,9 +57,51 @@ class AttendanceConfig(models.Model):
         ],
     )
     correction_window_days = models.PositiveSmallIntegerField(
-    default=1,
-    validators=[MinValueValidator(0), MaxValueValidator(365)],
-)
+        default=7,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(365),
+        ],
+        help_text=(
+            "Number of days after an attendance date during which "
+            "faculty may edit already-saved attendance."
+        ),
+    )
+    term_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="First date of the institution's active academic term.",
+    )
+    term_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last date of the institution's active academic term.",
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    threshold_percentage__gte=0,
+                    threshold_percentage__lte=100,
+                ),
+                name="attendance_threshold_0_100",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    correction_window_days__gte=0,
+                    correction_window_days__lte=365,
+                ),
+                name="attendance_correction_window_0_365",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(term_start_date__isnull=True, term_end_date__isnull=True)
+                    | models.Q(term_start_date__lte=models.F("term_end_date"))
+                ),
+                name="attendance_term_start_before_end",
+            ),
+        ]
 
     class Meta:
         constraints = [

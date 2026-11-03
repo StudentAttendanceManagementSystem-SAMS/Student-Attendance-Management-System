@@ -75,7 +75,13 @@ def mark_attendance(request, assignment_id, on_date):
             student__section=assignment.section,
         )
         has_existing = existing_records.exists()
+        
+        if not config.term_start_date or not config.term_end_date:
+            raise PermissionDenied("The administrator has not configured the active term.")
 
+        if not config.term_start_date <= day <= config.term_end_date:
+            raise PermissionDenied("Attendance date is outside the active academic term.")
+        
         if has_existing and not can_edit_attendance(day, config):
             raise PermissionDenied(
                 "The authorised attendance correction window has expired."
