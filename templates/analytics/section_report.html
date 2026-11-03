@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Section-wise Attendance Report{% endblock %}
+
+{% block content %}
+<h1>Section-wise Attendance Report</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Section</th>
+            <th>Semester</th>
+            <th>Academic Year</th>
+            <th>Students</th>
+            <th>Total Records</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Attendance Percentage</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in report %}
+        <tr>
+            <td>{{ row.section.name }}</td>
+            <td>{{ row.section.semester }}</td>
+            <td>{{ row.section.academic_year }}</td>
+            <td>{{ row.student_count }}</td>
+            <td>{{ row.total_records }}</td>
+            <td>{{ row.present_count }}</td>
+            <td>{{ row.absent_count }}</td>
+            <td>
+                {% if row.percentage != None %}
+                    {{ row.percentage }}%
+                {% else %}
+                    No records
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8">No section data is available.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

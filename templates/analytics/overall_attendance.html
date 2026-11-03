@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Overall Attendance{% endblock %}
+
+{% block content %}
+<h1>Overall Attendance</h1>
+
+{% if student_report %}
+    <h2>Your Current-Term Summary</h2>
+    <p>Semester: {{ student_report.semester }}</p>
+    {% if student_report.percentage is not None %}
+        <p><strong>Overall attendance: {{ student_report.percentage }}%</strong></p>
+        <p>Present: {{ student_report.present_count }} of {{ student_report.total_count }} recorded classes.</p>
+    {% else %}
+        <p>No attendance records are available for your current semester yet.</p>
+    {% endif %}
+
+    {% if student_report.subjects %}
+    <h2>Subject-wise Breakdown</h2>
+    <table>
+        <thead><tr><th>Subject</th><th>Present</th><th>Total Classes</th><th>Attendance</th></tr></thead>
+        <tbody>
+        {% for row in student_report.subjects %}
+            <tr>
+                <td>{{ row.subject.code }} — {{ row.subject.name }}</td>
+                <td>{{ row.present_count }}</td>
+                <td>{{ row.total_count }}</td>
+                <td>{% if row.percentage is not None %}{{ row.percentage }}%{% else %}—{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+{% endif %}
+
+{% if faculty_reports is not None %}
+    <p>Student summaries are limited to sections assigned to you and use each student's current semester.</p>
+    {% if faculty_reports %}
+    <table>
+        <thead><tr><th>USN</th><th>Student</th><th>Section</th><th>Semester</th><th>Present</th><th>Total Classes</th><th>Overall Attendance</th></tr></thead>
+        <tbody>
+        {% for row in faculty_reports %}
+            <tr>
+                <td>{{ row.student.usn }}</td>
+                <td>{{ row.student.name }}</td>
+                <td>{{ row.student.section.name }}</td>
+                <td>{{ row.semester }}</td>
+                <td>{{ row.present_count }}</td>
+                <td>{{ row.total_count }}</td>
+                <td>{{ row.percentage }}%</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No current-term attendance records are available for students in your assigned sections.</p>
+    {% endif %}
+{% endif %}
+
+{% endblock %}
