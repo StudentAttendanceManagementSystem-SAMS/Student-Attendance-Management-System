@@ -296,3 +296,17 @@ class SecurityTests(TestCase):
         self.assertNotEqual(user.password, "plain-pass-123")
         self.assertIn("$", user.password)
         self.assertTrue(user.check_password("plain-pass-123"))
+class CsrfRegressionTests(TestCase):
+
+    def test_login_post_without_csrf_token_is_rejected(self):
+        strict_client = Client(enforce_csrf_checks=True)
+
+        response = strict_client.post(
+            reverse("accounts:login"),
+            {
+                "username": "nobody",
+                "password": "wrong-password",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
