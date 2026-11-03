@@ -296,3 +296,66 @@ class SecurityTests(TestCase):
         self.assertNotEqual(user.password, "plain-pass-123")
         self.assertIn("$", user.password)
         self.assertTrue(user.check_password("plain-pass-123"))
+
+class RoleFlowSmokeTests(TestCase):
+
+    def login(self, user):
+        self.client.logout()
+        return self.client.post(
+            reverse("accounts:login"),
+            {
+                "username": user.username,
+                "password": "pass12345",
+            },
+        )
+
+    def test_administrator_flow(self):
+        self.login(make_admin())
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            200,
+        )
+
+        self.assertRedirects(
+            self.client.post(reverse("accounts:logout")),
+            reverse("accounts:login"),
+        )
+
+    def test_faculty_flow(self):
+        faculty = make_faculty()
+        self.login(faculty.user)
+
+        self.assertEqual(
+            self.client.get(
+                reverse("attendance:select_class")
+            ).status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            403,
+        )
+
+    def test_student_flow(self):
+        student = make_student()
+        self.login(student.user)
+
+        self.assertEqual(
+            self.client.get(
+                reverse("dashboard:home")
+            ).status_code,
+            302,
+        )
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            403,
+        )
