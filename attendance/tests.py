@@ -11,6 +11,10 @@ from masterdata.factories import (
 )
 
 from .models import Attendance, AttendanceConfig
+import datetime
+
+from attendance.models import Attendance, AttendanceConfig
+
 
 
 class AttendanceModelTests(TestCase):
@@ -187,3 +191,71 @@ class DuplicateMarkingTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, f'name="status_{self.students[1].pk}" value="A" checked')
         self.assertContains(response, "already exists")
+        
+class AttendanceCorrectionWindowTests(TestCase):
+    def setUp(self):
+        self.section = make_section()
+        self.faculty = make_faculty()
+        self.subject = make_subject(semester=self.section.semester)
+        self.assignment = make_assignment(self.faculty, self.subject, self.section)
+        self.student = make_student(section=self.section, semester=self.section.semester)
+        self.client.force_login(self.faculty.user)
+        self.config = AttendanceConfig.get_solo()
+        self.config.correction_window_days = 1
+        self.config.save()
+        self.today = datetime.date.today()
+
+    def url_for(self, day):
+        return reverse(
+            "attendance:mark",
+            args=[self.assignment.pk, day.isoformat()],
+        )
+
+    def test_same_day_attendance_can_be_created(self):
+        response = self.client.post(
+            self.url_for(self.today),
+            {f"status_{self.student.pk}": Attendance.PRESENT},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Attendance.objects.get().status, Attendance.PRESENT)
+
+    def test_yesterdays_attendance_can_be_corrected_with_one_day_window(self):
+        yesterday = self.today - datetime.timedelta(days=1)
+        Attendance.objects.create(
+            student=self.student,
+            subject=self.subject,
+            faculty=self.faculty,
+            date=yesterday,
+            status=Attendance.ABSENT,
+        )
+        response = self.client.post(
+            self.url_for(yesterday),
+            {f"status_{self.student.pk}": Attendance.PRESENT},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Attendance.objects.get().status, Attendance.PRESENT)
+
+    def test_expired_correction_is_rejected(self):
+        old_day = self.today - datetime.timedelta(days=3)
+        Attendance.objects.create(
+            student=self.student,
+            subject=self.subject,
+            faculty=self.faculty,
+            date=old_day,
+            status=Attendance.ABSENT,
+        )
+        response = self.client.post(
+            self.url_for(old_day),
+            {f"status_{self.student.pk}": Attendance.PRESENT},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Attendance.objects.get().status, Attendance.ABSENT)
+
+    def test_future_attendance_is_rejected(self):
+        future_day = self.today + datetime.timedelta(days=1)
+        response = self.client.post(
+            self.url_for(future_day),
+            {f"status_{self.student.pk}": Attendance.PRESENT},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Attendance.objects.exists())

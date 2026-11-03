@@ -25,6 +25,13 @@ def select_class(request):
     return render(request, "attendance/select_class.html", {"form": form, "has_assignments": assignments.exists()})
 
 
+def attendance_edit_deadline(day, config):
+    return day + datetime.timedelta(days=config.correction_window_days)
+
+
+def can_edit_attendance(day, config, today=None):
+    today = today or datetime.date.today()
+
 @login_required
 def mark_attendance(request, assignment_id, on_date):
     assignment = get_object_or_404(
@@ -33,6 +40,20 @@ def mark_attendance(request, assignment_id, on_date):
     )
     try:
         day = datetime.date.fromisoformat(on_date)
+        config = AttendanceConfig.get_solo()
+        existing_records = Attendance.objects.filter(
+            subject=assignment.subject,
+            date=day,
+            student__section=assignment.section,
+        )
+        has_existing = existing_records.exists()
+
+        if has_existing and not can_edit_attendance(day, config):
+            raise PermissionDenied(
+                "The authorised attendance correction window has expired."
+            )
+        if day > datetime.date.today():
+            raise PermissionDenied("Attendance cannot be marked for a future date.")
     except ValueError:
         raise Http404("Invalid date")
     students = list(Student.objects.filter(section=assignment.section).order_by("usn"))
