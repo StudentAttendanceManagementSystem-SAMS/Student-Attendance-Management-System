@@ -9,11 +9,20 @@ from django.urls import reverse_lazy
 from django.views.generic import FormView
 
 from accounts.models import User
-from accounts.permissions import faculty_owns_assignment, role_required
+from accounts.permissions import AdminRequiredMixin, faculty_owns_assignment, role_required
 from masterdata.models import FacultyAssignment, Student
 
 from .forms import AttendanceConfigForm, ClassSelectForm
 from .models import Attendance, AttendanceConfig
+
+
+def attendance_edit_deadline(day, config):
+    return day + datetime.timedelta(days=config.correction_window_days)
+
+
+def can_edit_attendance(day, config, today=None):
+    today = today or datetime.date.today()
+    return today <= attendance_edit_deadline(day, config)
 
 
 @role_required(User.FACULTY)
@@ -76,10 +85,9 @@ def mark_attendance(request, assignment_id, on_date):
         )
         has_existing = existing_records.exists()
         
-        if not config.term_start_date or not config.term_end_date:
-            raise PermissionDenied("The administrator has not configured the active term.")
-
-        if not config.term_start_date <= day <= config.term_end_date:
+        if config.term_start_date and day < config.term_start_date:
+            raise PermissionDenied("Attendance date is outside the active academic term.")
+        if config.term_end_date and day > config.term_end_date:
             raise PermissionDenied("Attendance date is outside the active academic term.")
         
         if has_existing and not can_edit_attendance(day, config):
@@ -151,3 +159,22 @@ def mark_attendance(request, assignment_id, on_date):
     }
 
     return render(request, "attendance/mark.html", context)
+
+
+class AttendanceConfigView(AdminRequiredMixin, FormView):
+    template_name = "attendance/config.html"
+    form_class = AttendanceConfigForm
+    success_url = reverse_lazy("attendance:config")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = AttendanceConfig.get_solo()
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(
+            self.request,
+            "Minimum attendance threshold updated successfully.",
+        )
+        return super().form_valid(form)
