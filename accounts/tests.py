@@ -1,10 +1,27 @@
+
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.http import HttpResponse
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from .models import User
+from masterdata.factories import (
+    make_admin,
+    make_assignment,
+    make_faculty,
+    make_section,
+    make_student,
+    make_subject,
+)
+
+from .permissions import (
+    faculty_owns_assignment,
+    role_required,
+    student_owns_record,
+)
 
 
 class UserRoleTests(TestCase):
@@ -37,6 +54,7 @@ class UserRoleTests(TestCase):
         )
         self.assertEqual(user.role, User.ADMIN)
 
+
 class LoginTests(TestCase):
     def setUp(self):
         User.objects.create_user(
@@ -66,3 +84,290 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid username or password")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+# RBAC decorator tests
+
+@role_required(User.ADMIN)
+def admin_only_view(request):
+    return HttpResponse("ok")
+
+
+class RoleRequiredTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def make_request(self, user):
+        request = self.factory.get("/protected/")
+        request.user = user
+        return request
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        response = admin_only_view(
+            self.make_request(AnonymousUser())
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response.url)
+
+    def test_wrong_role_is_forbidden(self):
+        with self.assertRaises(PermissionDenied):
+            admin_only_view(
+                self.make_request(
+                    User(username="s", role=User.STUDENT)
+                )
+            )
+
+    def test_correct_role_is_allowed(self):
+        response = admin_only_view(
+            self.make_request(
+                User(username="a", role=User.ADMIN)
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+
+
+# Ownership tests
+
+class OwnershipTests(TestCase):
+    def setUp(self):
+        self.faculty = make_faculty()
+        self.other_faculty = make_faculty()
+        self.assignment = make_assignment(
+            self.faculty,
+            make_subject(),
+            make_section(),
+        )
+        self.student = make_student()
+        self.other_student = make_student()
+
+    def test_faculty_owns_only_their_own_assignment(self):
+        self.assertTrue(
+            faculty_owns_assignment(self.faculty.user, self.assignment)
+        )
+        self.assertFalse(
+            faculty_owns_assignment(self.other_faculty.user, self.assignment)
+        )
+
+    def test_student_account_never_owns_an_assignment(self):
+        self.assertFalse(
+            faculty_owns_assignment(self.student.user, self.assignment)
+        )
+
+    def test_student_owns_only_their_own_record(self):
+        self.assertTrue(
+            student_owns_record(self.student.user, self.student)
+        )
+        self.assertFalse(
+            student_owns_record(self.student.user, self.other_student)
+        )
+
+
+# Role-based page access tests
+
+class RoleAccessTests(TestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.faculty = make_faculty()
+        self.student = make_student()
+
+        self.assignment = make_assignment(
+            self.faculty,
+            make_subject(),
+            self.student.section,
+        )
+
+        self.student_list = reverse("masterdata:student_list")
+        self.mark_url = reverse(
+            "attendance:mark",
+            args=[self.assignment.pk, "2026-10-28"],
+        )
+
+    def test_admin_pages_open_for_the_administrator(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(self.student_list)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_pages_are_forbidden_for_faculty_and_students(self):
+        for user in (self.faculty.user, self.student.user):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.get(self.student_list)
+
+                self.assertEqual(response.status_code, 403)
+    def test_faculty_cannot_mark_an_unassigned_section(self):
+        self.client.force_login(make_faculty().user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 403)
+    def test_assigned_faculty_can_open_the_marking_page(self):
+        self.client.force_login(self.faculty.user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_student_cannot_open_the_marking_page(self):
+        self.client.force_login(self.student.user)
+
+        response = self.client.get(self.mark_url)
+
+        self.assertEqual(response.status_code, 403)
+
+# Logout tests
+
+class LogoutTests(TestCase):
+    def setUp(self):
+        user = User.objects.create_user(
+            username="fac1",
+            password="pass12345",
+            role=User.FACULTY,
+        )
+        self.client.force_login(user)
+
+    def test_logout_ends_the_session(self):
+        response = self.client.post(reverse("accounts:logout"))
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_protected_page_redirects_to_login_after_logout(self):
+        self.client.post(reverse("accounts:logout"))
+
+        home = reverse("accounts:home")
+        response = self.client.get(home)
+
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={home}",
+        )
+
+    def test_session_expires_after_two_hours_of_inactivity(self):
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 7200)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+
+
+# Security tests
+
+class SecurityTests(TestCase):
+    def test_anonymous_users_are_redirected_to_login(self):
+        urls = [
+            reverse("accounts:home"),
+            reverse("masterdata:student_list"),
+            reverse("attendance:select_class"),
+        ]
+
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertRedirects(
+                    response,
+                    f"{reverse('accounts:login')}?next={url}",
+                    fetch_redirect_response=False,
+                )
+
+    def test_login_page_stays_public(self):
+        response = self.client.get(reverse("accounts:login"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_post_without_csrf_token_is_rejected(self):
+        strict = Client(enforce_csrf_checks=True)
+
+        response = strict.post(
+            reverse("accounts:login"),
+            {"username": "a", "password": "b"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+    def test_passwords_are_stored_hashed(self):
+        user = User.objects.create_user(
+            username="h1",
+            password="plain-pass-123",
+            role=User.STUDENT,
+        )
+
+        self.assertNotEqual(user.password, "plain-pass-123")
+        self.assertIn("$", user.password)
+        self.assertTrue(user.check_password("plain-pass-123"))
+
+class RoleFlowSmokeTests(TestCase):
+
+    def login(self, user):
+        self.client.logout()
+        return self.client.post(
+            reverse("accounts:login"),
+            {
+                "username": user.username,
+                "password": "pass12345",
+            },
+        )
+
+    def test_administrator_flow(self):
+        self.login(make_admin())
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            200,
+        )
+
+        self.assertRedirects(
+            self.client.post(reverse("accounts:logout")),
+            reverse("accounts:login"),
+        )
+
+    def test_faculty_flow(self):
+        faculty = make_faculty()
+        self.login(faculty.user)
+
+        self.assertEqual(
+            self.client.get(
+                reverse("attendance:select_class")
+            ).status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            403,
+        )
+
+    def test_student_flow(self):
+        student = make_student()
+        self.login(student.user)
+
+        self.assertEqual(
+            self.client.get(
+                reverse("dashboard:home")
+            ).status_code,
+            302,
+        )
+
+        self.assertEqual(
+            self.client.get(
+                reverse("masterdata:student_list")
+            ).status_code,
+            403,
+        )
+
+
+class CsrfRegressionTests(TestCase):
+
+    def test_login_post_without_csrf_token_is_rejected(self):
+        strict_client = Client(enforce_csrf_checks=True)
+
+        response = strict_client.post(
+            reverse("accounts:login"),
+            {
+                "username": "nobody",
+                "password": "wrong-password",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
