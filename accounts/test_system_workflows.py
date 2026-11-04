@@ -3,7 +3,7 @@ import datetime
 from django.test import TestCase
 from django.urls import reverse
 
-from attendance.models import Attendance
+from attendance.models import Attendance, AttendanceConfig
 from masterdata.factories import (
     make_admin,
     make_assignment,
@@ -29,6 +29,14 @@ class SamsRoleWorkflowTests(TestCase):
             semester=self.section.semester,
         )
 
+        self.day = datetime.date.today()
+        AttendanceConfig.objects.create(
+            pk=1,
+            correction_window_days=7,
+            term_start_date=self.day,
+            term_end_date=self.day,
+        )
+
     def test_admin_can_access_master_data_and_reports(self):
         self.client.force_login(self.admin)
 
@@ -43,7 +51,7 @@ class SamsRoleWorkflowTests(TestCase):
 
     def test_faculty_can_mark_assigned_class_but_not_admin_pages(self):
         self.client.force_login(self.faculty.user)
-        day = datetime.date.today()
+        day = self.day
         mark_url = reverse(
             "attendance:mark",
             args=[self.assignment.pk, day.isoformat()],
@@ -86,7 +94,7 @@ class SamsRoleWorkflowTests(TestCase):
 
         mark_url = reverse(
             "attendance:mark",
-            args=[self.assignment.pk, datetime.date.today().isoformat()],
+            args=[self.assignment.pk, self.day.isoformat()],
         )
 
         response = self.client.post(
