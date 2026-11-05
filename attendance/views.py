@@ -1,18 +1,31 @@
+
 import datetime
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.views.generic import FormView
 
+from accounts.models import User
+from accounts.permissions import AdminRequiredMixin, faculty_owns_assignment, role_required
 from masterdata.models import FacultyAssignment, Student
 
-from .forms import ClassSelectForm
+from .forms import AttendanceConfigForm, ClassSelectForm
 from .models import Attendance, AttendanceConfig
 
 
-@login_required
+def attendance_edit_deadline(day, config):
+    return day + datetime.timedelta(days=config.correction_window_days)
+
+
+def can_edit_attendance(day, config, today=None):
+    today = today or datetime.date.today()
+    return today <= attendance_edit_deadline(day, config)
+
+
+@role_required(User.FACULTY)
 def select_class(request):
     faculty = getattr(request.user, "faculty_profile", None)
     assignments = FacultyAssignment.objects.none()
@@ -30,6 +43,7 @@ def select_class(request):
     if form.is_valid():
         assignment = form.cleaned_data["assignment"]
         on_date = form.cleaned_data["date"]
+
         return redirect(
             "attendance:mark",
             assignment_id=assignment.pk,
@@ -46,23 +60,7 @@ def select_class(request):
     )
 
 
-def attendance_edit_deadline(day, config):
-    return day + datetime.timedelta(
-        days=config.correction_window_days
-    )
-
-
-def can_edit_attendance(day, config, today=None):
-    """Return whether an existing attendance record is still editable."""
-    today = today or datetime.date.today()
-
-    if day > today:
-        return False
-
-    return today <= attendance_edit_deadline(day, config)
-
-
-@login_required
+@role_required(User.FACULTY)
 def mark_attendance(request, assignment_id, on_date):
     assignment = get_object_or_404(
         FacultyAssignment.objects.select_related(
@@ -73,58 +71,46 @@ def mark_attendance(request, assignment_id, on_date):
         pk=assignment_id,
     )
 
-    # A faculty member may only view or mark attendance for their own assignment.
-    faculty = getattr(request.user, "faculty_profile", None)
-    if faculty is None or assignment.faculty_id != faculty.pk:
+    # Ensure faculty can only mark attendance for their own assignment.
+    if not faculty_owns_assignment(request.user, assignment):
         raise PermissionDenied
 
     try:
         day = datetime.date.fromisoformat(on_date)
+        config = AttendanceConfig.get_solo()
+        existing_records = Attendance.objects.filter(
+            subject=assignment.subject,
+            date=day,
+            student__section=assignment.section,
+        )
+        has_existing = existing_records.exists()
+        
+        if config.term_start_date and day < config.term_start_date:
+            raise PermissionDenied("Attendance date is outside the active academic term.")
+        if config.term_end_date and day > config.term_end_date:
+            raise PermissionDenied("Attendance date is outside the active academic term.")
+        
+        if has_existing and not can_edit_attendance(day, config):
+            raise PermissionDenied(
+                "The authorised attendance correction window has expired."
+            )
+        if day > datetime.date.today():
+            raise PermissionDenied("Attendance cannot be marked for a future date.")
     except ValueError:
         raise Http404("Invalid date")
 
-    config = AttendanceConfig.get_solo()
-
-    # Attendance cannot be marked until the administrator configures the term.
-    if not config.term_start_date or not config.term_end_date:
-        raise PermissionDenied(
-            "The administrator has not configured the active term."
-        )
-
-    if not config.term_start_date <= day <= config.term_end_date:
-        raise PermissionDenied(
-            "Attendance date is outside the active academic term."
-        )
-
-    today = datetime.date.today()
-    if day > today:
-        raise PermissionDenied(
-            "Attendance cannot be marked for a future date."
-        )
-
     students = list(
-        Student.objects.filter(section=assignment.section).order_by("usn")
+        Student.objects.filter(
+            section=assignment.section,
+        ).order_by("usn")
     )
-
-    existing_records = Attendance.objects.filter(
-        subject=assignment.subject,
-        date=day,
-        student__section=assignment.section,
-    )
-    has_existing = existing_records.exists()
-
-    # The correction window applies only when records already exist.
-    if has_existing and not can_edit_attendance(day, config, today):
-        raise PermissionDenied(
-            "The authorised attendance correction window has expired."
-        )
 
     if request.method == "POST":
-        created = 0
-        updated = 0
+        created = updated = 0
 
         for student in students:
             status = request.POST.get(f"status_{student.pk}")
+
             if status not in (Attendance.PRESENT, Attendance.ABSENT):
                 status = Attendance.ABSENT
 
@@ -147,11 +133,16 @@ def mark_attendance(request, assignment_id, on_date):
             request,
             f"Attendance saved: {created} new, {updated} updated.",
         )
+
         return redirect("attendance:select_class")
 
     existing = {
         record.student_id: record.status
-        for record in existing_records
+        for record in Attendance.objects.filter(
+            subject=assignment.subject,
+            date=day,
+            student__in=students,
+        )
     }
 
     for student in students:
@@ -166,4 +157,24 @@ def mark_attendance(request, assignment_id, on_date):
         "students": students,
         "is_edit": bool(existing),
     }
+
     return render(request, "attendance/mark.html", context)
+
+
+class AttendanceConfigView(AdminRequiredMixin, FormView):
+    template_name = "attendance/config.html"
+    form_class = AttendanceConfigForm
+    success_url = reverse_lazy("attendance:config")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = AttendanceConfig.get_solo()
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(
+            self.request,
+            "Minimum attendance threshold updated successfully.",
+        )
+        return super().form_valid(form)

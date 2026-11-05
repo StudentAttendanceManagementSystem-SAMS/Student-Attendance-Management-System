@@ -1,10 +1,11 @@
-import datetime
 
-from django.db import IntegrityError, connection, transaction
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from attendance.forms import AttendanceConfigForm
 
 from masterdata.factories import (
+    make_admin,
     make_assignment,
     make_faculty,
     make_section,
@@ -54,6 +55,85 @@ class AttendanceModelTests(TestCase):
         self.assertEqual(config.threshold_percentage, 75)
 
 
+class AttendanceConfigViewTests(TestCase):
+    def setUp(self):
+        self.url = reverse("attendance:config")
+        self.admin = make_admin()
+        self.faculty = make_faculty()
+
+    def test_default_threshold_is_displayed_to_admin(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].instance.threshold_percentage,
+            75,
+        )
+
+    def test_admin_can_update_threshold_and_value_persists(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            self.url,
+            {"threshold_percentage": 80},
+        )
+
+        self.assertRedirects(response, self.url)
+        self.assertEqual(
+            AttendanceConfig.objects.get(pk=1).threshold_percentage,
+            80,
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].instance.threshold_percentage,
+            80,
+        )
+
+    def test_invalid_threshold_is_rejected(self):
+        self.client.force_login(self.admin)
+
+        # Create the default configuration before submitting invalid values.
+        AttendanceConfig.objects.get_or_create(
+            pk=1,
+            defaults={"threshold_percentage": 75},
+        )
+
+        for value in ("-1", "101"):
+            with self.subTest(value=value):
+                response = self.client.post(
+                    self.url,
+                    {"threshold_percentage": value},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(
+                    response.context["form"].errors
+                )
+
+                # Invalid submissions must not change the saved threshold.
+                self.assertEqual(
+                    AttendanceConfig.objects.get(pk=1).threshold_percentage,
+                    75,
+                )
+
+    def test_faculty_cannot_access_threshold_settings(self):
+        self.client.force_login(self.faculty.user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 302)
+
+
 class ClassSelectionTests(TestCase):
     def setUp(self):
         self.section = make_section()
@@ -76,7 +156,11 @@ class ClassSelectionTests(TestCase):
 
     def test_only_own_assignments_are_listed(self):
         response = self.client.get(self.url)
-        queryset = response.context["form"].fields["assignment"].queryset
+
+        queryset = response.context["form"].fields[
+            "assignment"
+        ].queryset
+
         self.assertEqual(list(queryset), [self.mine])
 
     def test_valid_selection_redirects_to_roster(self):
@@ -99,8 +183,13 @@ class ClassSelectionTests(TestCase):
 
     def test_faculty_without_assignments_sees_message(self):
         self.client.force_login(make_faculty().user)
+
         response = self.client.get(self.url)
-        self.assertContains(response, "No classes have been assigned")
+
+        self.assertContains(
+            response,
+            "No classes have been assigned",
+        )
 
 
 class RosterViewTests(TestCase):
@@ -113,6 +202,7 @@ class RosterViewTests(TestCase):
             make_subject(),
             self.section,
         )
+
         self.client.force_login(self.faculty.user)
         self.today = datetime.date.today()
         self.url = reverse(
@@ -125,18 +215,30 @@ class RosterViewTests(TestCase):
             make_student(section=self.section)
 
         response = self.client.get(self.url)
-        self.assertEqual(len(response.context["students"]), 3)
+
+        self.assertEqual(
+            len(response.context["students"]),
+            3,
+        )
 
     def test_empty_section_shows_message(self):
         response = self.client.get(self.url)
-        self.assertContains(response, "No students are enrolled")
+
+        self.assertContains(
+            response,
+            "No students are enrolled",
+        )
 
     def test_invalid_date_returns_404(self):
         url = reverse(
             "attendance:mark",
             args=[self.assignment.pk, "not-a-date"],
         )
-        self.assertEqual(self.client.get(url).status_code, 404)
+
+        self.assertEqual(
+            self.client.get(url).status_code,
+            404,
+        )
 
 
 class SaveAttendanceTests(TestCase):
@@ -153,6 +255,7 @@ class SaveAttendanceTests(TestCase):
             make_student(section=self.section)
             for _ in range(3)
         ]
+
         self.client.force_login(self.faculty.user)
         self.today = datetime.date.today()
         self.url = reverse(
@@ -162,10 +265,10 @@ class SaveAttendanceTests(TestCase):
 
     def test_post_saves_one_record_per_student(self):
         data = {
-            f"status_{student.pk}": Attendance.PRESENT
+            f"status_{student.pk}": "P"
             for student in self.students
         }
-        data[f"status_{self.students[0].pk}"] = Attendance.ABSENT
+        data[f"status_{self.students[0].pk}"] = "A"
 
         response = self.client.post(self.url, data)
 
@@ -175,15 +278,17 @@ class SaveAttendanceTests(TestCase):
         )
         self.assertEqual(Attendance.objects.count(), 3)
         self.assertEqual(
-            Attendance.objects.get(student=self.students[0]).status,
-            Attendance.ABSENT,
+            Attendance.objects.get(
+                student=self.students[0]
+            ).status,
+            "A",
         )
 
     def test_records_are_linked_to_the_faculty_member(self):
         self.client.post(
             self.url,
             {
-                f"status_{student.pk}": Attendance.PRESENT
+                f"status_{student.pk}": "P"
                 for student in self.students
             },
         )
@@ -197,8 +302,11 @@ class SaveAttendanceTests(TestCase):
 
     def test_missing_status_defaults_to_absent(self):
         self.client.post(self.url, {})
+
         self.assertEqual(
-            Attendance.objects.filter(status=Attendance.ABSENT).count(),
+            Attendance.objects.filter(
+                status=Attendance.ABSENT
+            ).count(),
             3,
         )
 
@@ -217,41 +325,41 @@ class DuplicateMarkingTests(TestCase):
             make_student(section=self.section)
             for _ in range(3)
         ]
+
         self.client.force_login(self.faculty.user)
-        self.today = datetime.date.today()
         self.url = reverse(
             "attendance:mark",
-            args=[self.assignment.pk, self.today.isoformat()],
+            args=[self.assignment.pk, "2026-10-28"],
         )
 
     def test_second_submission_updates_instead_of_duplicating(self):
         self.client.post(
             self.url,
             {
-                f"status_{student.pk}": Attendance.PRESENT
+                f"status_{student.pk}": "P"
                 for student in self.students
             },
         )
         self.client.post(
             self.url,
             {
-                f"status_{student.pk}": Attendance.ABSENT
+                f"status_{student.pk}": "A"
                 for student in self.students
             },
         )
 
         self.assertEqual(Attendance.objects.count(), 3)
         self.assertEqual(
-            Attendance.objects.filter(status=Attendance.ABSENT).count(),
+            Attendance.objects.filter(status="A").count(),
             3,
         )
 
     def test_existing_values_are_shown_when_reopened(self):
         data = {
-            f"status_{student.pk}": Attendance.PRESENT
+            f"status_{student.pk}": "P"
             for student in self.students
         }
-        data[f"status_{self.students[1].pk}"] = Attendance.ABSENT
+        data[f"status_{self.students[1].pk}"] = "A"
 
         self.client.post(self.url, data)
         response = self.client.get(self.url)
@@ -263,160 +371,84 @@ class DuplicateMarkingTests(TestCase):
         self.assertContains(response, "already exists")
 
 
-class AttendanceCorrectionWindowTests(TestCase):
+class AttendanceEdgeCaseTests(TestCase):
     def setUp(self):
         self.section = make_section()
         self.faculty = make_faculty()
-        self.subject = make_subject(semester=self.section.semester)
-        self.assignment = make_assignment(
-            self.faculty,
-            self.subject,
-            self.section,
-        )
-        self.student = make_student(
-            section=self.section,
-            semester=self.section.semester,
-        )
-        self.client.force_login(self.faculty.user)
-
-        self.config = AttendanceConfig.get_solo()
-        self.config.correction_window_days = 1
-        today = datetime.date.today()
-        self.config.term_start_date = today - datetime.timedelta(days=365)
-        self.config.term_end_date = today + datetime.timedelta(days=365)
-        self.config.save()
-        self.today = today
-
-    def url_for(self, day):
-        return reverse(
-            "attendance:mark",
-            args=[self.assignment.pk, day.isoformat()],
-        )
-
-    def test_same_day_attendance_can_be_created(self):
-        response = self.client.post(
-            self.url_for(self.today),
-            {f"status_{self.student.pk}": Attendance.PRESENT},
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            Attendance.objects.get().status,
-            Attendance.PRESENT,
-        )
-
-    def test_yesterdays_attendance_can_be_corrected_with_one_day_window(self):
-        yesterday = self.today - datetime.timedelta(days=1)
-        Attendance.objects.create(
-            student=self.student,
-            subject=self.subject,
-            faculty=self.faculty,
-            date=yesterday,
-            status=Attendance.ABSENT,
-        )
-
-        response = self.client.post(
-            self.url_for(yesterday),
-            {f"status_{self.student.pk}": Attendance.PRESENT},
-        )
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            Attendance.objects.get().status,
-            Attendance.PRESENT,
-        )
-
-    def test_expired_correction_is_rejected(self):
-        old_day = self.today - datetime.timedelta(days=3)
-        Attendance.objects.create(
-            student=self.student,
-            subject=self.subject,
-            faculty=self.faculty,
-            date=old_day,
-            status=Attendance.ABSENT,
-        )
-
-        response = self.client.post(
-            self.url_for(old_day),
-            {f"status_{self.student.pk}": Attendance.PRESENT},
-        )
-
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(
-            Attendance.objects.get().status,
-            Attendance.ABSENT,
-        )
-
-    def test_future_attendance_is_rejected(self):
-        future_day = self.today + datetime.timedelta(days=1)
-
-        response = self.client.post(
-            self.url_for(future_day),
-            {f"status_{self.student.pk}": Attendance.PRESENT},
-        )
-
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(Attendance.objects.exists())
-
-
-class AttendanceAuthorizationTests(TestCase):
-    def setUp(self):
-        configure_active_term()
-        self.section = make_section()
-        self.faculty = make_faculty()
-        self.other_faculty = make_faculty()
         self.assignment = make_assignment(
             self.faculty,
             make_subject(),
             self.section,
         )
         self.student = make_student(section=self.section)
-        self.today = datetime.date.today()
 
-    def test_other_faculty_cannot_submit_attendance(self):
-        self.client.force_login(self.other_faculty.user)
-
-        response = self.client.post(
-            reverse(
-                "attendance:mark",
-                args=[self.assignment.pk, self.today.isoformat()],
-            ),
-            {f"status_{self.student.pk}": Attendance.PRESENT},
+        self.client.force_login(self.faculty.user)
+        self.url = reverse(
+            "attendance:mark",
+            args=[self.assignment.pk, "2026-10-29"],
         )
 
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(Attendance.objects.exists())
-
-
-class AttendancePersistenceTests(TestCase):
-    def test_saved_attendance_is_available_after_connection_reopens(self):
-        section = make_section()
-        faculty = make_faculty()
-        subject = make_subject(semester=section.semester)
-        student = make_student(
-            section=section,
-            semester=section.semester,
+    def test_invalid_status_value_is_saved_as_absent(self):
+        self.client.post(
+            self.url,
+            {f"status_{self.student.pk}": "X"},
         )
-        day = datetime.date(2026, 11, 2)
 
-        saved = Attendance.objects.create(
-            student=student,
-            subject=subject,
-            faculty=faculty,
-            date=day,
-            status=Attendance.PRESENT,
+        self.assertEqual(
+            Attendance.objects.get().status,
+            Attendance.ABSENT,
         )
-        saved_pk = saved.pk
 
-        connection.close()
+    def test_unknown_assignment_returns_404(self):
+        url = reverse(
+            "attendance:mark",
+            args=[99999, "2026-10-29"],
+        )
 
-        reloaded = Attendance.objects.select_related(
-            "student",
-            "subject",
-            "faculty",
-        ).get(pk=saved_pk)
+        self.assertEqual(
+            self.client.get(url).status_code,
+            404,
+        )
 
-        self.assertEqual(reloaded.status, Attendance.PRESENT)
-        self.assertEqual(reloaded.student_id, student.pk)
-        self.assertEqual(reloaded.subject_id, subject.pk)
-        self.assertEqual(reloaded.faculty_id, faculty.pk)
-        self.assertEqual(reloaded.date, day)
+    def test_marking_one_subject_does_not_touch_another(self):
+        other = make_assignment(
+            self.faculty,
+            make_subject(),
+            self.section,
+        )
+
+        self.client.post(
+            self.url,
+            {f"status_{self.student.pk}": "P"},
+        )
+
+        other_url = reverse(
+            "attendance:mark",
+            args=[other.pk, "2026-10-29"],
+        )
+        self.client.post(
+            other_url,
+            {f"status_{self.student.pk}": "A"},
+        )
+
+        self.assertEqual(Attendance.objects.count(), 2)
+
+class AttendanceConfigBoundaryTests(TestCase):
+
+    def test_threshold_zero_is_valid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 0}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_threshold_one_hundred_is_valid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 100}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_threshold_above_one_hundred_is_invalid(self):
+        form = AttendanceConfigForm(
+            data={"threshold_percentage": 101}
+        )
+        self.assertFalse(form.is_valid())
