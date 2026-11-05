@@ -14,7 +14,7 @@ from .models import Attendance, AttendanceConfig
 import datetime
 
 from attendance.models import Attendance, AttendanceConfig
-
+from django.db import connection
 
 
 class AttendanceModelTests(TestCase):
@@ -271,3 +271,34 @@ def test_other_faculty_cannot_submit_attendance(self):
 
     self.assertEqual(response.status_code, 403)
     self.assertFalse(Attendance.objects.exists())
+
+
+class AttendancePersistenceTests(TestCase):
+    def test_saved_attendance_is_available_after_connection_reopens(self):
+        section = make_section()
+        faculty = make_faculty()
+        subject = make_subject(semester=section.semester)
+        student = make_student(section=section, semester=section.semester)
+        day = datetime.date(2026, 11, 2)
+
+        saved = Attendance.objects.create(
+            student=student,
+            subject=subject,
+            faculty=faculty,
+            date=day,
+            status=Attendance.PRESENT,
+        )
+        saved_pk = saved.pk
+
+        connection.close()
+
+        reloaded = Attendance.objects.select_related(
+            "student", "subject", "faculty"
+        ).get(pk=saved_pk)
+
+        self.assertEqual(reloaded.status, Attendance.PRESENT)
+        self.assertEqual(reloaded.student_id, student.pk)
+        self.assertEqual(reloaded.subject_id, subject.pk)
+        self.assertEqual(reloaded.faculty_id, faculty.pk)
+        self.assertEqual(reloaded.date, day)
+```
