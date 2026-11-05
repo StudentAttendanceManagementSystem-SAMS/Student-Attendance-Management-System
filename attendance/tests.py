@@ -14,10 +14,16 @@ from masterdata.factories import (
 )
 
 from .models import Attendance, AttendanceConfig
-import datetime
 
-from attendance.models import Attendance, AttendanceConfig
 
+def configure_active_term():
+    """Configure a term that includes today and the dates used by a test."""
+    today = datetime.date.today()
+    config = AttendanceConfig.get_solo()
+    config.term_start_date = today - datetime.timedelta(days=365)
+    config.term_end_date = today + datetime.timedelta(days=365)
+    config.save()
+    return config
 
 
 class AttendanceModelTests(TestCase):
@@ -30,7 +36,7 @@ class AttendanceModelTests(TestCase):
             student=student,
             subject=subject,
             faculty=faculty,
-            date="2026-10-21",
+            date=datetime.date(2026, 10, 21),
             status=Attendance.PRESENT,
         )
 
@@ -40,7 +46,7 @@ class AttendanceModelTests(TestCase):
                     student=student,
                     subject=subject,
                     faculty=faculty,
-                    date="2026-10-21",
+                    date=datetime.date(2026, 10, 21),
                     status=Attendance.ABSENT,
                 )
 
@@ -188,6 +194,7 @@ class ClassSelectionTests(TestCase):
 
 class RosterViewTests(TestCase):
     def setUp(self):
+        configure_active_term()
         self.section = make_section()
         self.faculty = make_faculty()
         self.assignment = make_assignment(
@@ -197,9 +204,10 @@ class RosterViewTests(TestCase):
         )
 
         self.client.force_login(self.faculty.user)
+        self.today = datetime.date.today()
         self.url = reverse(
             "attendance:mark",
-            args=[self.assignment.pk, "2026-10-26"],
+            args=[self.assignment.pk, self.today.isoformat()],
         )
 
     def test_roster_lists_every_student_in_the_section(self):
@@ -235,6 +243,7 @@ class RosterViewTests(TestCase):
 
 class SaveAttendanceTests(TestCase):
     def setUp(self):
+        configure_active_term()
         self.section = make_section()
         self.faculty = make_faculty()
         self.assignment = make_assignment(
@@ -248,9 +257,10 @@ class SaveAttendanceTests(TestCase):
         ]
 
         self.client.force_login(self.faculty.user)
+        self.today = datetime.date.today()
         self.url = reverse(
             "attendance:mark",
-            args=[self.assignment.pk, "2026-10-27"],
+            args=[self.assignment.pk, self.today.isoformat()],
         )
 
     def test_post_saves_one_record_per_student(self):
@@ -303,6 +313,7 @@ class SaveAttendanceTests(TestCase):
 
 class DuplicateMarkingTests(TestCase):
     def setUp(self):
+        configure_active_term()
         self.section = make_section()
         self.faculty = make_faculty()
         self.assignment = make_assignment(
