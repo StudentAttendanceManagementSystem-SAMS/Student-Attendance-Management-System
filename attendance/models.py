@@ -1,4 +1,4 @@
-from django.core.validators import MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -11,13 +11,19 @@ class Attendance(models.Model):
     ]
 
     student = models.ForeignKey(
-        "masterdata.Student", on_delete=models.CASCADE, related_name="attendance_records"
+        "masterdata.Student",
+        on_delete=models.CASCADE,
+        related_name="attendance_records",
     )
     subject = models.ForeignKey(
-        "masterdata.Subject", on_delete=models.PROTECT, related_name="attendance_records"
+        "masterdata.Subject",
+        on_delete=models.PROTECT,
+        related_name="attendance_records",
     )
     faculty = models.ForeignKey(
-        "masterdata.Faculty", on_delete=models.PROTECT, related_name="marked_attendance"
+        "masterdata.Faculty",
+        on_delete=models.PROTECT,
+        related_name="marked_attendance",
     )
     date = models.DateField()
     status = models.CharField(max_length=1, choices=STATUS_CHOICES)
@@ -27,16 +33,19 @@ class Attendance(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["student", "subject", "date"], name="unique_attendance_per_day"
+                fields=["student", "subject", "date"],
+                name="unique_attendance_per_day",
             )
         ]
         ordering = ["-date", "student__usn"]
 
     def __str__(self):
-        return f"{self.student.usn} {self.subject.code} {self.date} {self.status}"
+        return (
+            f"{self.student.usn} "
+            f"{self.subject.code} {self.date} {self.status}"
+        )
 
 
-        
 class AttendanceConfig(models.Model):
     threshold_percentage = models.PositiveSmallIntegerField(
         default=75,
