@@ -47,7 +47,6 @@ class Attendance(models.Model):
         )
 
 
-        
 class AttendanceConfig(models.Model):
     threshold_percentage = models.PositiveSmallIntegerField(
         default=75,
