@@ -80,6 +80,7 @@ Role-based navigation is not the security boundary. Views and data access must e
 ├── templates/      Django templates
 ├── static/         Project CSS, JavaScript, and static assets
 ├── docs/           User, setup, schema, test, demo, RTM, and handoff docs
+├── test-evidence/  Test screenshots, coverage reports, and demo recordings
 ├── .github/        GitHub Actions workflow
 ├── manage.py
 └── requirements.txt
@@ -241,3 +242,15 @@ coverage html --rcfile=.coveragerc
 Open `htmlcov/index.html` to inspect missed lines and branch paths. GitHub Actions runs unit, integration, system, and coverage jobs on pushes and pull requests. See [`docs/TESTING_CI_COVERAGE.md`](docs/TESTING_CI_COVERAGE.md) for the four-person responsibility split and evidence checklist.
 
 The current workflow provides Continuous Integration (CI). Automated Continuous Delivery/Deployment (CD) requires a selected hosting target and deployment secrets; it is not claimed as configured.
+
+## Test and demo evidence
+
+The repository-root [`test-evidence/`](test-evidence/) folder contains supporting visual and video evidence for the project:
+
+- Screenshots of GitHub Actions results and the unit, integration, and system testing jobs.
+- Coverage summary screenshots and the HTML coverage report screenshot.
+- Two demo recordings:
+  - `After Sprint1.webm` — Sprint 1 demonstration.
+  - `After Sprint2.webm` — Sprint 2 demonstration.
+
+These files provide visual evidence of the test workflow, coverage results, and application demonstrations. Detailed test outcomes and outstanding retests remain documented in [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
