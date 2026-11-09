@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block page_heading %}My profile{% endblock %}
+{% block content %}
+<div class="profile-heading"><div><span class="eyebrow">FACULTY PROFILE</span><h1>{{ faculty.name }}</h1><p>{{ faculty.employee_id }} · {{ faculty.department }}</p></div><span class="status-pill {% if faculty.user.is_active %}status-good{% else %}status-low{% endif %}">{% if faculty.user.is_active %}Active{% else %}Inactive{% endif %}</span></div>
+<div class="profile-grid">
+<section class="profile-card"><h2>Personal & employment information</h2><dl class="profile-details">
+<div><dt>Date of birth</dt><dd>{{ profile.date_of_birth|date:"d M Y"|default:"Not added" }}</dd></div>
+<div><dt>Age</dt><dd>{% if profile.age %}{{ profile.age }} years{% else %}Not added{% endif %}</dd></div>
+<div><dt>Date of joining</dt><dd>{{ profile.date_of_joining|date:"d M Y"|default:"Not added" }}</dd></div>
+<div><dt>Designation</dt><dd>{{ profile.designation|default:"Not added" }}</dd></div>
+<div><dt>Institutional email</dt><dd>{{ faculty.user.email|default:"Not added" }}</dd></div>
+<div><dt>Personal email</dt><dd>{{ profile.personal_email|default:"Not added" }}</dd></div>
+<div><dt>Contact number</dt><dd>{{ faculty.contact_no|default:"Not added" }}</dd></div>
+<div class="wide"><dt>Address</dt><dd>{{ profile.address|default:"Not added"|linebreaksbr }}</dd></div>
+</dl></section>
+<section class="profile-card"><h2>Teaching assignments</h2>{% if assignments %}<div class="profile-assignment-list">{% for item in assignments %}<div><strong>{{ item.subject.code }} · {{ item.subject.name }}</strong><span>{{ item.section.name }} · Semester {{ item.section.semester }}</span></div>{% endfor %}</div>{% else %}<p>No teaching assignments yet.</p>{% endif %}</section>
+<section class="profile-card profile-edit-card"><h2>Edit profile</h2><form method="post">{% csrf_token %}{% include "profiles/_form_fields.html" %}<button type="submit">Save profile</button></form></section>
+</div>
+{% endblock %}

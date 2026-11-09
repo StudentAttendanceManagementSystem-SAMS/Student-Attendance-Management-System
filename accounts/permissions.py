@@ -47,10 +47,18 @@ class StudentRequiredMixin(RoleRequiredMixin):
     allowed_roles = (User.STUDENT,)
 
 def faculty_owns_assignment(user, assignment):
+    """Return True only when an authenticated Faculty user owns the assignment."""
+    if not user.is_authenticated or user.role != User.FACULTY:
+        return False
+
     profile = getattr(user, "faculty_profile", None)
     return profile is not None and assignment.faculty_id == profile.pk
 
 
 def student_owns_record(user, student):
+    """Return True only when an authenticated Student user owns the profile."""
+    if not user.is_authenticated or user.role != User.STUDENT:
+        return False
+
     profile = getattr(user, "student_profile", None)
     return profile is not None and student.pk == profile.pk

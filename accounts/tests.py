@@ -82,8 +82,31 @@ class LoginTests(TestCase):
             {"username": "admin1", "password": "wrong"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Invalid username or password")
+        self.assertFormError(
+            response.context["form"],
+            None,
+            "Invalid username or password. Please try again.",
+        )
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_repeated_failed_logins_show_warning(self):
+        for _ in range(3):
+            response = self.client.post(
+                self.url,
+                {"username": "admin1", "password": "wrong"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            None,
+            "Multiple unsuccessful login attempts detected. "
+            "Check your credentials carefully before trying again.",
+        )
+
+    def test_successful_login_resets_failed_attempt_counter(self):
+        self.client.post(self.url, {"username": "admin1", "password": "wrong"})
+        self.client.post(self.url, {"username": "admin1", "password": "pass12345"})
+        self.assertNotIn("sams_login_failures", self.client.session)
 
 
 # RBAC decorator tests
@@ -197,12 +220,14 @@ class RoleAccessTests(TestCase):
                 response = self.client.get(self.student_list)
 
                 self.assertEqual(response.status_code, 403)
+
     def test_faculty_cannot_mark_an_unassigned_section(self):
         self.client.force_login(make_faculty().user)
 
         response = self.client.get(self.mark_url)
 
         self.assertEqual(response.status_code, 403)
+
     def test_assigned_faculty_can_open_the_marking_page(self):
         self.client.force_login(self.faculty.user)
 
@@ -216,6 +241,7 @@ class RoleAccessTests(TestCase):
         response = self.client.get(self.mark_url)
 
         self.assertEqual(response.status_code, 403)
+
 
 # Logout tests
 
@@ -282,6 +308,7 @@ class SecurityTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
     def test_passwords_are_stored_hashed(self):
         user = User.objects.create_user(
             username="h1",
@@ -293,81 +320,102 @@ class SecurityTests(TestCase):
         self.assertIn("$", user.password)
         self.assertTrue(user.check_password("plain-pass-123"))
 
-class RoleFlowSmokeTests(TestCase):
 
-    def login(self, user):
-        self.client.logout()
-        return self.client.post(
-            reverse("accounts:login"),
-            {
-                "username": user.username,
-                "password": "pass12345",
-            },
+# Password change tests (SRS FR-AUTH-05)
+
+class PasswordChangeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="password-user",
+            password="Old-password-123!",
+            role=User.STUDENT,
         )
+        self.client.force_login(self.user)
+        self.url = reverse("accounts:password_change")
 
-    def test_administrator_flow(self):
-        self.login(make_admin())
-
-        self.assertEqual(
-            self.client.get(
-                reverse("masterdata:student_list")
-            ).status_code,
-            200,
+    def test_authenticated_user_can_change_their_password(self):
+        response = self.client.post(
+            self.url,
+            {
+                "old_password": "Old-password-123!",
+                "new_password1": "New-password-456!",
+                "new_password2": "New-password-456!",
+            },
         )
 
         self.assertRedirects(
-            self.client.post(reverse("accounts:logout")),
-            reverse("accounts:login"),
+            response,
+            reverse("accounts:password_change_done"),
         )
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("New-password-456!"))
+        # PasswordChangeView should preserve the authenticated session.
+        self.assertIn("_auth_user_id", self.client.session)
 
-    def test_faculty_flow(self):
-        faculty = make_faculty()
-        self.login(faculty.user)
-
-        self.assertEqual(
-            self.client.get(
-                reverse("attendance:select_class")
-            ).status_code,
-            200,
-        )
-
-        self.assertEqual(
-            self.client.get(
-                reverse("masterdata:student_list")
-            ).status_code,
-            403,
-        )
-
-    def test_student_flow(self):
-        student = make_student()
-        self.login(student.user)
-
-        self.assertEqual(
-            self.client.get(
-                reverse("dashboard:home")
-            ).status_code,
-            302,
-        )
-
-        self.assertEqual(
-            self.client.get(
-                reverse("masterdata:student_list")
-            ).status_code,
-            403,
-        )
-
-
-class CsrfRegressionTests(TestCase):
-
-    def test_login_post_without_csrf_token_is_rejected(self):
-        strict_client = Client(enforce_csrf_checks=True)
-
-        response = strict_client.post(
-            reverse("accounts:login"),
+    def test_wrong_old_password_is_rejected(self):
+        response = self.client.post(
+            self.url,
             {
-                "username": "nobody",
-                "password": "wrong-password",
+                "old_password": "incorrect-old-password",
+                "new_password1": "New-password-456!",
+                "new_password2": "New-password-456!",
             },
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your old password was entered incorrectly")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Old-password-123!"))
+
+    def test_mismatched_new_passwords_are_rejected(self):
+        response = self.client.post(
+            self.url,
+            {
+                "old_password": "Old-password-123!",
+                "new_password1": "New-password-456!",
+                "new_password2": "Different-password-789!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Old-password-123!"))
+
+    def test_anonymous_user_cannot_open_password_change(self):
+        self.client.logout()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response.url)
+
+
+class SuperuserRoleInvariantTests(TestCase):
+    def test_superuser_role_cannot_be_overridden_to_faculty(self):
+        user = User.objects.create_superuser(
+            username="forced-admin",
+            password="pass12345",
+            role=User.FACULTY,
+        )
+
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.role, User.ADMIN)
+
+
+class OwnershipRoleInvariantTests(TestCase):
+    def test_admin_does_not_pass_faculty_assignment_ownership(self):
+        admin = make_admin()
+        faculty = make_faculty()
+        assignment = make_assignment(
+            faculty,
+            make_subject(),
+            make_section(),
+        )
+
+        self.assertFalse(faculty_owns_assignment(admin, assignment))
+
+    def test_faculty_does_not_pass_student_record_ownership(self):
+        faculty = make_faculty()
+        student = make_student()
+
+        self.assertFalse(student_owns_record(faculty.user, student))

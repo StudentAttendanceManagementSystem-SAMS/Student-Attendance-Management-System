@@ -3,21 +3,12 @@
 {% block content %}
 <h1>Faculty</h1>
 <p><a class="button" href="{% url 'masterdata:faculty_create' %}">Add faculty</a></p>
-<table>
-  <thead>
-    <tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Contact</th></tr>
-  </thead>
-  <tbody>
-    {% for member in faculty_members %}
-    <tr>
-      <td>{{ member.employee_id }}</td>
-      <td>{{ member.name }}</td>
-      <td>{{ member.department }}</td>
-      <td>{{ member.contact_no }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="4">No faculty yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Contact</th><th>Assignments</th><th>Account</th><th>Actions</th></tr></thead>
+<tbody>{% for member in faculty_members %}<tr>
+<td>{{ member.employee_id }}</td><td>{{ member.name }}</td><td>{{ member.department }}</td><td>{{ member.contact_no }}</td>
+<td>{% for assignment in member.assignments.all %}{{ assignment.subject.code }} / {{ assignment.section.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</td>
+<td>{% if member.user.is_active %}Active{% else %}Inactive{% endif %}</td>
+<td><a href="{% url 'masterdata:faculty_update' member.pk %}">Edit</a>
+{% if member.user.is_active %}<form method="post" action="{% url 'masterdata:faculty_deactivate' member.pk %}" style="display:inline">{% csrf_token %}<button type="submit" onclick="return confirm('Deactivate this faculty account?')">Deactivate</button></form>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="7">No faculty yet.</td></tr>{% endfor %}</tbody></table>
 {% endblock %}

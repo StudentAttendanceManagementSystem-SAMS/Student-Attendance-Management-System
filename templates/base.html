@@ -1,20 +1,70 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{% block title %}SAMS{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>{% block title %}SAMS{% endblock %} | SAMS</title>
+  <link rel="stylesheet" href="{% static 'css/sams.css' %}">
 </head>
 <body>
-  {% if messages %}
-    <ul class="messages">
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-  <main>
-    {% block content %}
-    {% endblock %}
-  </main>
+  <div class="app-shell">
+    {% if user.is_authenticated %}
+    <aside class="sidebar">
+      <a class="brand" href="{% url 'accounts:home' %}">
+        <span class="brand-mark">S</span><span><strong>SAMS</strong><small>Attendance Management</small></span>
+      </a>
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a href="{% url 'accounts:home' %}"><span class="nav-icon">⌂</span>Dashboard</a>
+        <a href="{% url 'profiles:my_profile' %}"><span class="nav-icon">◉</span>My profile</a>
+        {% if user.role == "ADMIN" %}
+          <div class="sidebar-label">MANAGEMENT</div>
+          <a href="{% url 'masterdata:student_list' %}"><span class="nav-icon">▤</span>Students</a>
+          <a href="{% url 'masterdata:faculty_list' %}"><span class="nav-icon">♙</span>Faculty</a>
+          <a href="{% url 'masterdata:section_list' %}"><span class="nav-icon">▦</span>Sections</a>
+          <a href="{% url 'masterdata:subject_list' %}"><span class="nav-icon">▧</span>Subjects</a>
+          <a href="{% url 'masterdata:assignment_list' %}"><span class="nav-icon">⇄</span>Assignments</a>
+          <div class="sidebar-label">INSIGHTS & SETTINGS</div>
+          <a href="{% url 'analytics:section_report' %}"><span class="nav-icon">▥</span>Section reports</a>
+          <a href="{% url 'analytics:subject_report' %}"><span class="nav-icon">▥</span>Subject reports</a>
+          <a href="{% url 'analytics:below_threshold' %}"><span class="nav-icon">!</span>Low attendance</a>
+          <a href="{% url 'attendance:config' %}"><span class="nav-icon">⚙</span>Attendance settings</a>
+        {% elif user.role == "FACULTY" %}
+          <div class="sidebar-label">TEACHING</div>
+          <a href="{% url 'attendance:select_class' %}"><span class="nav-icon">✓</span>Mark attendance</a>
+          <a href="{% url 'analytics:faculty_subject_report' %}"><span class="nav-icon">▥</span>Subject reports</a>
+          <a href="{% url 'analytics:below_threshold' %}"><span class="nav-icon">!</span>Low attendance</a>
+          <a href="{% url 'analytics:overall_attendance' %}"><span class="nav-icon">▤</span>Student summary</a>
+        {% elif user.role == "STUDENT" %}
+          <div class="sidebar-label">MY ATTENDANCE</div>
+          <a href="{% url 'analytics:overall_attendance' %}"><span class="nav-icon">▥</span>My report</a>
+          <a href="{% url 'analytics:my_attendance_history' %}"><span class="nav-icon">◷</span>Attendance history</a>
+        {% endif %}
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="user-chip"><span class="avatar">{{ user.username|first|upper }}</span><span><strong>{{ user.get_username }}</strong><small>{{ user.get_role_display }}</small></span></div>
+        <form method="post" action="{% url 'accounts:logout' %}" class="logout-form">
+          {% csrf_token %}
+          <button class="sidebar-logout" type="submit">Sign out</button>
+        </form>
+      </div>
+    </aside>
+    {% endif %}
+    <div class="main-column {% if not user.is_authenticated %}main-public{% endif %}">
+      {% if user.is_authenticated %}
+      <header class="topbar"><div><span class="eyebrow">STUDENT ATTENDANCE MANAGEMENT SYSTEM</span><strong>{% block page_heading %}Workspace{% endblock %}</strong></div><div class="topbar-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode"><span data-theme-icon>◐</span><span data-theme-label>Dark mode</span></button><a href="{% url 'profiles:my_profile' %}">My profile</a><a href="{% url 'accounts:password_change' %}">Account settings</a><span class="topbar-avatar">{{ user.username|first|upper }}</span></div></header>
+      {% else %}
+      <header class="public-topbar"><a class="public-brand" href="{% url 'accounts:login' %}"><span class="public-brand-mark">S</span><span><strong>SAMS</strong><small>Student Attendance Management System</small></span></a><button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode"><span data-theme-icon>◐</span><span data-theme-label>Dark mode</span></button></header>
+      {% endif %}
+      <main class="page-content">
+        {% if messages %}<div class="message-stack">{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+        {% block content %}{% endblock %}
+      </main>
+      <footer class="footer">SAMS <span>·</span> Student Attendance Management System</footer>
+    </div>
+  </div>
+  <script src="{% static 'js/theme.js' %}" defer></script>
 </body>
 </html>

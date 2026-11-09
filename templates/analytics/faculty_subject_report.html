@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Faculty Subject Report{% endblock %}
+{% block content %}
+<h1>Subject-wise Student Report</h1>
+<p>Select a section and subject assigned to you. Only your assigned combinations are available.</p>
+<form method="get">
+    {{ form.as_p }}
+    <button type="submit">Generate report</button>
+</form>
+{% if report %}
+<h2>{{ report.assignment.subject.code }} — {{ report.assignment.subject.name }} / {{ report.assignment.section.name }}</h2>
+<table><thead><tr><th>USN</th><th>Student</th><th>Present</th><th>Total Classes</th><th>Attendance</th><th>History</th></tr></thead><tbody>
+{% for row in report.rows %}
+<tr><td>{{ row.student.usn }}</td><td>{{ row.student.name }}</td><td>{{ row.present_count }}</td><td>{{ row.total_count }}</td>
+<td>{% if row.percentage is not None %}{{ row.percentage }}%{% else %}No records{% endif %}</td>
+<td><a href="{% url 'analytics:student_attendance_history' row.student.pk %}?subject={{ report.assignment.subject.pk }}">View history</a></td></tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+{% endblock %}

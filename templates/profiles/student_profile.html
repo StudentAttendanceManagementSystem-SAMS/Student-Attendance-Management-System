@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block page_heading %}My profile{% endblock %}
+{% block content %}
+<div class="profile-heading">
+  <div><span class="eyebrow">STUDENT PROFILE</span><h1>{{ student.name }}</h1><p>{{ student.usn }} · {{ student.section.name }} · Semester {{ student.semester }}</p></div>
+  <span class="status-pill {% if student.user.is_active %}status-good{% else %}status-low{% endif %}">{% if student.user.is_active %}Active{% else %}Inactive{% endif %}</span>
+</div>
+<div class="profile-grid">
+  <section class="profile-card"><h2>Personal information</h2><dl class="profile-details">
+    <div><dt>Date of birth</dt><dd>{{ profile.date_of_birth|date:"d M Y"|default:"Not added" }}</dd></div>
+    <div><dt>Age</dt><dd>{% if profile.age %}{{ profile.age }} years{% else %}Not added{% endif %}</dd></div>
+    <div><dt>Year of joining</dt><dd>{{ profile.joining_year|default:"Not added" }}</dd></div>
+    <div><dt>Email</dt><dd>{{ student.user.email|default:"Not added" }}</dd></div>
+    <div><dt>Contact number</dt><dd>{{ student.contact_no|default:"Not added" }}</dd></div>
+    <div class="wide"><dt>Address</dt><dd>{{ profile.address|default:"Not added"|linebreaksbr }}</dd></div>
+  </dl></section>
+  <section class="profile-card"><h2>Academic information</h2><div class="profile-stat-grid">
+    <div class="profile-stat"><span>Current CGPA</span><strong>{% if profile.current_cgpa != None %}{{ profile.current_cgpa }} / 10{% else %}—{% endif %}</strong></div>
+    <div class="profile-stat"><span>Current SGPA</span><strong>{% if profile.current_sgpa != None %}{{ profile.current_sgpa }} / 10{% else %}—{% endif %}</strong></div>
+  </div><p class="profile-note">Academic scores are maintained by authorised institutional staff.</p></section>
+  <section class="profile-card"><h2>Parent / guardian information</h2><dl class="profile-details">
+    <div><dt>Name</dt><dd>{{ profile.parent_name|default:"Not added" }}</dd></div>
+    <div><dt>Relationship</dt><dd>{{ profile.parent_relationship|default:"Not added" }}</dd></div>
+    <div><dt>Email</dt><dd>{{ profile.parent_email|default:"Not added" }}</dd></div>
+    <div><dt>Contact number</dt><dd>{{ profile.parent_contact_no|default:"Not added" }}</dd></div>
+  </dl></section>
+  <section class="profile-card profile-edit-card"><h2>Edit personal details</h2><p>Update your contact information and parent or guardian details. Academic identifiers and grades cannot be changed here.</p>
+    <form method="post">{% csrf_token %}{% include "profiles/_form_fields.html" %}<button type="submit">Save profile</button></form>
+  </section>
+</div>
+{% endblock %}

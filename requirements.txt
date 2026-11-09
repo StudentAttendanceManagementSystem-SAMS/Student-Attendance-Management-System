@@ -1,3 +1,7 @@
+# Core application dependencies
 asgiref==3.12.1
 Django==6.1.2
 sqlparse==0.6.0
+
+# Test coverage (statement and branch coverage)
+coverage==7.17.1

@@ -3,23 +3,21 @@
 {% block content %}
 <h1>Students</h1>
 <p><a class="button" href="{% url 'masterdata:student_create' %}">Add student</a></p>
+<form method="get">
+  <label>Section <select name="section"><option value="">All sections</option>{% for section in sections %}<option value="{{ section.pk }}" {% if selected_section == section.pk|stringformat:"s" %}selected{% endif %}>{{ section.name }}</option>{% endfor %}</select></label>
+  <label>Semester <select name="semester"><option value="">All semesters</option>{% for semester in semesters %}<option value="{{ semester }}" {% if selected_semester == semester|stringformat:"s" %}selected{% endif %}>{{ semester }}</option>{% endfor %}</select></label>
+  <button type="submit">Filter</button> <a href="{% url 'masterdata:student_list' %}">Clear</a>
+</form>
 <table>
-  <thead>
-    <tr><th>USN</th><th>Name</th><th>Section</th><th>Semester</th><th>Contact</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for student in students %}
-    <tr>
-      <td>{{ student.usn }}</td>
-      <td>{{ student.name }}</td>
-      <td>{{ student.section.name }}</td>
-      <td>{{ student.semester }}</td>
-      <td>{{ student.contact_no }}</td>
-      <td><a href="{% url 'masterdata:student_update' student.pk %}">Edit</a></td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="6">No students yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<thead><tr><th>USN</th><th>Name</th><th>Section</th><th>Semester</th><th>Contact</th><th>Account</th><th>Actions</th></tr></thead>
+<tbody>
+{% for student in students %}
+<tr>
+<td>{{ student.usn }}</td><td>{{ student.name }}</td><td>{{ student.section.name }}</td><td>{{ student.semester }}</td><td>{{ student.contact_no }}</td>
+<td>{% if student.user.is_active %}Active{% else %}Inactive{% endif %}</td>
+<td><a href="{% url 'masterdata:student_update' student.pk %}">Edit</a>
+{% if student.user.is_active %}<form method="post" action="{% url 'masterdata:student_deactivate' student.pk %}" style="display:inline">{% csrf_token %}<button type="submit" onclick="return confirm('Deactivate this student account?')">Deactivate</button></form>{% endif %}</td>
+</tr>
+{% empty %}<tr><td colspan="7">No students found.</td></tr>{% endfor %}
+</tbody></table>
 {% endblock %}

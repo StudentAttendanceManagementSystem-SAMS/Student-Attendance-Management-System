@@ -1,130 +1,151 @@
 # SAMS User Guide
 
-**System:** Student Attendance Management System (SAMS)
-**Audience:** Administrators, Faculty, Students, and test personnel
-**Status:** Operational guide based on the current repository. Exact labels may vary with the UI templates in the delivered build.
+**System:** Student Attendance Management System (SAMS)  
+**Audience:** Administrator, Faculty, Student, and test personnel  
+**Application URL (local):** `http://127.0.0.1:8000/`
 
 ## 1. Purpose
 
-SAMS provides role-specific access to student attendance, master data, attendance marking, attendance percentages, threshold configuration, and reports. Users should use only the account and role assigned to them.
+SAMS supports institutional master-data maintenance, attendance marking and correction, attendance calculation, reports, low-attendance monitoring, role-specific dashboards, and user profiles. Each user should sign in using the account and role assigned to them.
 
 ## 2. Sign in and sign out
 
-1. Start the Django application using the setup instructions in the root `README.md`.
-2. Open `http://127.0.0.1:8000/`.
-3. Enter your assigned username and password.
-4. Confirm that the page/dashboard corresponds to your role.
-5. Use the application's logout action when finished, especially on a shared computer.
+1. Start the application using `docs/INSTALLATION.md`.
+2. Open the application URL.
+3. Enter the assigned username and password.
+4. Confirm that the dashboard and navigation match the account role.
+5. Use **Sign out** when finished, particularly on a shared device.
 
-If login fails, check the username/password and contact the system administrator. Do not share passwords. Protected pages should redirect unauthenticated users to login; after logout, protected pages should no longer be available through the old session.
+After sign-out, protected pages should require authentication again. Browser history may retain a history entry, but protected responses are configured not to be cached. If a protected page appears stale, refresh it; it must not expose protected content from an active session.
+
+Repeated failed-login attempts produce a warning according to the configured session behavior. The warning is not an account lockout.
 
 ## 3. Administrator guide
 
-### 3.1 Configure institution master data
+### 3.1 Master data setup
 
-Set up data in a sensible order so that related records can be selected in forms:
+Create records in dependency order:
 
-1. Create sections and their academic details.
-2. Create subjects and the applicable semester details.
-3. Create student records and assign each student to the correct section.
-4. Create faculty records.
-5. Assign faculty to the appropriate subject/section combinations.
-6. Verify that unique identifiers (such as student USN, faculty employee ID, section name, and subject code) are not duplicated.
+1. Create Sections (semester 1–8).
+2. Create Subjects (semester 1–8).
+3. Create Students and assign each to the correct section.
+4. Create Faculty.
+5. Map subjects to sections.
+6. Assign faculty to subject-section combinations.
 
-Use the application's validation messages to correct invalid or duplicate data. Verify the saved record in the relevant list after creating or updating it.
+Use unique identifiers: student USN, faculty employee ID, section name, and subject code. Review validation errors and confirm each saved record in its list page.
 
-### 3.2 Configure the attendance threshold
+### 3.2 Attendance settings
 
-1. Sign in as an Administrator.
-2. Open the attendance threshold/settings page through the application navigation.
-3. Enter the required minimum attendance percentage (an integer from 0 to 100).
-4. Submit/save the setting.
-5. Reopen the page or refresh it and confirm the saved value persists.
+1. Open **Attendance Settings**.
+2. Set the minimum attendance threshold (default 75%).
+3. Set the correction window in days (default 7).
+4. Enter both active-term start and end dates.
+5. Ensure the end date is not earlier than the start date.
+6. Save and revisit the page to confirm persistence.
 
-The default configured threshold is 75%. The threshold is used by the low-attendance identification feature. Confirm the institution's approved policy before changing it.
+The term is institution-wide. Both dates are required before faculty can mark attendance. The allowed term range is inclusive. The correction window applies to edits of saved attendance; it does not override the term restriction.
 
-### 3.3 Review reports
+### 3.3 Reports and monitoring
 
-- **Section-wise report:** review attendance aggregates grouped by section.
-- **Subject-wise report:** review attendance aggregates grouped by subject, including aggregation across sections where applicable.
-- **Below-threshold report:** review students whose calculated attendance falls below the configured threshold.
+- Review section-wise and subject-wise attendance reports.
+- Review below-threshold students against the configured threshold.
+- Use date filters where offered and verify the selected scope.
+- Treat a missing percentage as unavailable when there are no attendance records, rather than assuming it is zero.
 
-Review the selected date/data scope and interpret a missing percentage carefully. If no attendance sessions have been recorded for a student/subject, a percentage may be unavailable rather than 0%.
+### 3.4 Administrator profile
 
-Administrators should not use report output as a substitute for checking source attendance records when a discrepancy is reported.
+Open **My Profile** from the application navigation. The profile displays administrator account details and the available personal/employment/contact information. Permitted fields can be updated through the profile form. Authorized profile records are also registered in Django Admin.
 
 ## 4. Faculty guide
 
-### 4.1 Open an assigned class
+### 4.1 Dashboard and assigned classes
 
-1. Sign in with a Faculty account.
-2. Open the attendance/class selection page.
-3. Select a subject/section assigned to your account.
-4. Select the attendance date and open the roster.
-
-Only assigned classes should be offered. If no assignments appear, contact the administrator to verify the faculty assignment.
+Sign in with a Faculty account. The dashboard and attendance selection should show only the subject-section combinations assigned to that faculty member. If no classes appear, ask the administrator to verify Faculty Assignments.
 
 ### 4.2 Mark attendance
 
-1. Check that the subject, section, and date are correct.
-2. Review the complete roster.
-3. Mark each student as **Present** or **Absent**.
-4. Submit the attendance.
-5. Verify the confirmation or saved roster.
+1. Open **Mark Attendance**.
+2. Select an assigned subject-section and a date.
+3. Confirm the subject, section, and date shown on the page.
+4. Mark each student Present or Absent.
+5. Submit and review the confirmation/saved roster.
 
-The application treats an omitted/invalid status defensively according to its current server-side behavior; users should nevertheless select an explicit status for every student.
+Attendance marking is rejected until the active term has been configured and for dates outside its inclusive range.
 
-### 4.3 Correct an existing session
+### 4.3 Correct attendance
 
-1. Reopen the same assigned subject/section and date.
-2. Confirm the previously saved values are displayed.
-3. Correct the necessary statuses.
-4. Submit again and verify the saved values.
+1. Reopen the same subject-section and date.
+2. Confirm previously saved statuses are loaded.
+3. Change only the required statuses.
+4. Submit and verify the result.
 
-The data model prevents more than one attendance record for the same student, subject, and date. Re-submission is intended to update the existing record rather than create a duplicate. Do not create a second session for the same subject/date to correct a typo.
+Existing attendance is editable only within the configured correction window. The default is seven days; the exact boundary behavior is documented in the RTM. The unique student/subject/date constraint prevents duplicate daily records.
 
-### 4.4 View low-attendance information
+### 4.4 Reports and low attendance
 
-Use the low-attendance page available to your role. Faculty visibility is scoped to assigned sections in the current tests. If a student appears unexpectedly, verify the attendance records, configured threshold, and assignment scope.
+Use the Faculty report and low-attendance pages available in the navigation. Data should be restricted to the faculty member's assigned subject-section scope.
+
+### 4.5 Faculty profile
+
+Open **My Profile**. The page displays faculty identity, department, employment information, institutional/personal email, contact information, address, and assigned teaching combinations where available. The self-service form allows permitted personal/contact fields to be updated. Employee ID, department, designation, joining date, and assignments are not editable through the faculty self-service form.
 
 ## 5. Student guide
 
-1. Sign in using the Student account.
-2. Open the student dashboard/attendance area.
-3. Review the attendance information and percentages displayed for your own account.
-4. If a record looks incorrect, contact the faculty member or administrator responsible for the class; do not attempt to edit attendance as a student.
+### 5.1 Dashboard and attendance
 
-A student must not be able to access administrator report pages or view another student's private attendance through URL manipulation.
+Sign in using the Student account. Review:
+- Overall attendance percentage.
+- Subject-wise attendance.
+- Subjects below the configured threshold.
+- Attendance history/report links available to the student.
 
-## 6. Attendance percentage and threshold interpretation
+A student should only see their own attendance information. If a record appears incorrect, contact the relevant faculty member or administrator; students do not mark or correct attendance.
 
-- Percentage is calculated from recorded attendance data by the application.
-- The threshold defaults to 75% and can be changed by an authorized administrator.
-- A student is considered below threshold when the calculated percentage is strictly less than the configured threshold; a value exactly equal to the threshold is not below it.
-- Where no classes/attendance records are available, the percentage may be represented as unavailable. Do not interpret unavailable as 0% without checking the underlying records.
+### 5.2 Student profile
+
+Open **My Profile**. The profile may display:
+- Name, USN, email, and contact number.
+- Date of birth and calculated age.
+- Joining year, semester, and section.
+- Current CGPA and SGPA.
+- Address and parent/guardian details.
+
+The self-service form allows permitted personal/contact and guardian details to be updated. Students cannot change their USN, section, semester, joining year, CGPA, or SGPA through their own profile. Academic/master-data values are maintained by authorized institutional staff.
+
+## 6. Attendance calculations
+
+- The default minimum attendance threshold is 75%.
+- A percentage strictly below the threshold is considered below threshold; a value equal to the threshold is not below it.
+- Overall attendance is a weighted aggregate of recorded classes, not a simple average of subject percentages.
+- Percentages are rounded to two decimal places.
+- Where no attendance records exist, the percentage is unavailable rather than automatically zero.
+- Reports are scoped to the active academic term by default, with narrower date filters where provided.
 
 ## 7. Troubleshooting
 
-| Symptom | What to check |
+| Symptom | Checks |
 |---|---|
-| Cannot sign in | Credentials, account existence, and assigned role; ask the administrator for help. |
-| Page redirects to login | Session may have expired or the page requires authentication. Sign in again. |
-| Access denied | Confirm that your role is authorized for the page. Faculty should verify their assignments. |
-| No classes shown to faculty | Ask the administrator to verify subject/section assignments. |
-| Duplicate record or unexpected attendance | Reopen the same subject/section/date and verify saved statuses; report persistent discrepancies. |
-| Percentage is blank/unavailable | Confirm that attendance sessions have been recorded for the relevant student and subject. |
-| Student appears below threshold | Verify the configured threshold and source attendance records. |
-| Server or migration error | Check terminal output, installed requirements, migrations, and Django system checks; report the error with the traceback to the maintainer. |
+| Login rejected | Check username/password and account role; ask the administrator to verify the account. |
+| User lands on the wrong page | Sign out, sign in again, and verify the role assigned to the account. |
+| Access denied | Verify the role and, for Faculty, the subject-section assignment. |
+| Faculty sees no classes | Ask the administrator to create the faculty assignment. |
+| Attendance cannot be marked | Confirm the active term start/end dates are configured and the selected date is within the term. |
+| Existing attendance is read-only | Check whether the correction window has expired. |
+| Student profile is incomplete | Authorized staff should maintain academic/master-data fields; the student can update only permitted self-service fields. |
+| Percentage is unavailable | Check whether attendance records exist for the relevant period and subject. |
+| Static styles do not update | Hard-refresh the browser; for collected deployment assets, run `collectstatic` after confirming `STATIC_ROOT`. |
+| Browser Back shows a protected page | Refresh the page; the server must redirect unauthenticated requests to login. Do not treat browser history as proof of an active session. |
+| Migration/system-check error | Run `python manage.py check`, `python manage.py showmigrations`, and inspect the full terminal traceback. |
 
-## 8. Security and data handling
+## 8. Privacy and security
 
-- Do not share accounts or passwords.
-- Use only the role assigned to you.
-- Do not attempt to access other users' records by changing URLs or identifiers.
-- Use synthetic or approved test data during testing.
-- Do not commit real credentials, production data, or secrets to Git.
-- Report suspected authorization failures or data discrepancies to the project maintainer.
+- Use synthetic demo data for demonstrations and testing.
+- Do not share passwords or use another person's account.
+- Do not attempt to access another user's profile or attendance by changing URLs.
+- Do not commit real student or parent contact details to source control.
+- Report suspected access-control defects with role, route, reproduction steps, and redacted evidence.
 
-## 9. Support and feedback
+## 9. Defect reporting
 
-When reporting a defect, include the role used, page/action, test data identifiers (non-sensitive), expected result, actual result, reproduction steps, and a screenshot or log with secrets removed.
+Include the account role, page/action, synthetic record identifiers, steps to reproduce, expected result, actual result, timestamp, and relevant terminal/browser output. Remove passwords, session cookies, and personal data from screenshots and logs.

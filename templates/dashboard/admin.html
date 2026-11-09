@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Administrator Dashboard{% endblock %}
+{% block page_heading %}Administrator dashboard{% endblock %}
+{% block content %}
+<div class="page-intro"><h1>Good day, {{ request.user.get_username }}</h1><p>Here is the current overview of your institution.</p></div>
+<div class="metric-grid">
+  <article class="metric-card"><span class="metric-label">Total students</span><strong class="metric-value">{{ student_count }}</strong><span class="metric-note">Registered student accounts</span></article>
+  <article class="metric-card"><span class="metric-label">Faculty members</span><strong class="metric-value">{{ faculty_count }}</strong><span class="metric-note">Registered faculty profiles</span></article>
+  <article class="metric-card"><span class="metric-label">Sections</span><strong class="metric-value">{{ section_count }}</strong><span class="metric-note">Active academic groups</span></article>
+  <article class="metric-card"><span class="metric-label">Subjects</span><strong class="metric-value">{{ subject_count }}</strong><span class="metric-note">Configured subjects</span></article>
+  <article class="metric-card"><span class="metric-label">Below attendance threshold</span><strong class="metric-value">{{ low_attendance_count }}</strong><span class="metric-note">Institution-wide · threshold {{ threshold }}%</span></article>
+</div>
+<section class="dashboard-section"><h2>Management</h2><div class="quick-links">
+  <a class="quick-link" href="{% url 'masterdata:student_list' %}"><strong>Manage students →</strong><span>Create, update and filter student records</span></a>
+  <a class="quick-link" href="{% url 'masterdata:faculty_list' %}"><strong>Manage faculty →</strong><span>Maintain faculty profiles and accounts</span></a>
+  <a class="quick-link" href="{% url 'masterdata:section_list' %}"><strong>Manage sections →</strong><span>View sections and student counts</span></a>
+  <a class="quick-link" href="{% url 'masterdata:subject_list' %}"><strong>Manage subjects →</strong><span>Maintain subjects and section mappings</span></a>
+  <a class="quick-link" href="{% url 'masterdata:assignment_list' %}"><strong>Faculty assignments →</strong><span>Assign faculty to subject-section pairs</span></a>
+  <a class="quick-link" href="{% url 'attendance:config' %}"><strong>Academic settings →</strong><span>Set term dates, threshold and correction window</span></a>
+</div></section>
+<section class="dashboard-section"><h2>Reports and monitoring</h2><div class="quick-links">
+  <a class="quick-link" href="{% url 'analytics:section_report' %}"><strong>Section-wise report →</strong><span>Institution-wide section attendance</span></a>
+  <a class="quick-link" href="{% url 'analytics:subject_report' %}"><strong>Subject-wise report →</strong><span>Compare attendance across subjects</span></a>
+  <a class="quick-link" href="{% url 'analytics:below_threshold' %}"><strong>Low-attendance list →</strong><span>Identify students needing attention</span></a>
+</div></section>
+{% endblock %}

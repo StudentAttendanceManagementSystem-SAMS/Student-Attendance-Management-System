@@ -3,20 +3,12 @@
 {% block content %}
 <h1>Subjects</h1>
 <p><a class="button" href="{% url 'masterdata:subject_create' %}">Add subject</a></p>
-<table>
-  <thead>
-    <tr><th>Code</th><th>Name</th><th>Semester</th></tr>
-  </thead>
-  <tbody>
-    {% for subject in subjects %}
-    <tr>
-      <td>{{ subject.code }}</td>
-      <td>{{ subject.name }}</td>
-      <td>{{ subject.semester }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="3">No subjects yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<table><thead><tr><th>Code</th><th>Name</th><th>Semester</th><th>Sections</th><th>Faculty</th><th>Actions</th></tr></thead>
+<tbody>{% for subject in subjects %}<tr>
+<td>{{ subject.code }}</td><td>{{ subject.name }}</td><td>{{ subject.semester }}</td>
+<td>{% for link in subject.section_links.all %}{{ link.section.name }}{% if not forloop.last %}, {% endif %}{% empty %}Not mapped{% endfor %}</td>
+<td>{% for assignment in subject.assignments.all %}{{ assignment.faculty.name }} ({{ assignment.section.name }}){% if not forloop.last %}, {% endif %}{% empty %}Not assigned{% endfor %}</td>
+<td><a href="{% url 'masterdata:subject_update' subject.pk %}">Edit</a>
+<form method="post" action="{% url 'masterdata:subject_delete' subject.pk %}" style="display:inline">{% csrf_token %}<button type="submit" onclick="return confirm('Delete this subject?')">Delete</button></form></td>
+</tr>{% empty %}<tr><td colspan="6">No subjects yet.</td></tr>{% endfor %}</tbody></table>
 {% endblock %}

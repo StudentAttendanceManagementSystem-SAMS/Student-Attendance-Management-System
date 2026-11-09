@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Faculty Dashboard{% endblock %}
+{% block page_heading %}Faculty dashboard{% endblock %}
+{% block content %}
+<div class="page-intro"><h1>Your teaching overview</h1><p>Attendance activity for {{ today|date:"l, d F Y" }}.</p></div>
+<div class="metric-grid">
+  <article class="metric-card"><span class="metric-label">Assigned classes</span><strong class="metric-value">{{ assignment_count }}</strong><span class="metric-note">Subject-section combinations</span></article>
+  <article class="metric-card"><span class="metric-label">Marked today</span><strong class="metric-value">{{ marked_count }}</strong><span class="metric-note">Of {{ assignment_count }} assigned classes</span></article>
+</div>
+<section class="dashboard-section"><h2>Assigned subject-section combinations</h2>
+{% if assignments %}<table><thead><tr><th>Subject</th><th>Section</th><th>Today's status</th><th>Records</th><th>Students</th><th>Action</th></tr></thead><tbody>
+{% for row in assignments %}<tr><td><strong>{{ row.assignment.subject.code }}</strong><br>{{ row.assignment.subject.name }}</td><td>{{ row.assignment.section.name }}</td><td>{% if row.marked_today %}<span class="status-pill status-good">Marked</span>{% else %}<span class="status-pill">Pending</span>{% endif %}</td><td>{{ row.record_count }}</td><td>{{ row.student_count }}</td><td><a class="button" href="{% url 'attendance:mark' row.assignment.pk today|date:'Y-m-d' %}">Open roster</a></td></tr>{% endfor %}
+</tbody></table>{% else %}<p>No subject-section combinations have been assigned to your account.</p>{% endif %}</section>
+<section class="dashboard-section"><h2>Reports and monitoring</h2><div class="quick-links">
+<a class="quick-link" href="{% url 'attendance:select_class' %}"><strong>Mark attendance →</strong><span>Select an assigned class and date</span></a>
+<a class="quick-link" href="{% url 'analytics:faculty_subject_report' %}"><strong>Subject reports →</strong><span>Review student-wise attendance percentages</span></a>
+<a class="quick-link" href="{% url 'analytics:below_threshold' %}"><strong>Low-attendance list →</strong><span>Review students in your assigned classes</span></a>
+<a class="quick-link" href="{% url 'analytics:overall_attendance' %}"><strong>Student summary →</strong><span>Review assigned students' attendance</span></a>
+</div></section>
+{% endblock %}

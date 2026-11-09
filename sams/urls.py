@@ -8,4 +8,5 @@ urlpatterns = [
     path('masterdata/', include('masterdata.urls')),
     path('attendance/', include('attendance.urls')),
     path('analytics/', include('analytics.urls')),
+    path('profile/', include('profiles.urls')),
 ]

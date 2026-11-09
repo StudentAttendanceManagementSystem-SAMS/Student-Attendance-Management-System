@@ -1,14 +1,17 @@
 from django.conf import settings
 from django.db import models
 
+SEMESTER_CHOICES = [(n, f"Semester {n}") for n in range(1, 9)]
+
 
 class Section(models.Model):
     name = models.CharField(max_length=30, unique=True)
-    semester = models.PositiveSmallIntegerField()
+    semester = models.PositiveSmallIntegerField(choices=SEMESTER_CHOICES)
     academic_year = models.CharField(max_length=9)
 
     class Meta:
         ordering = ["name"]
+        constraints = [models.CheckConstraint(condition=models.Q(semester__gte=1, semester__lte=8), name="section_semester_1_to_8")]
 
     def __str__(self):
         return self.name
@@ -17,10 +20,11 @@ class Section(models.Model):
 class Subject(models.Model):
     code = models.CharField(max_length=15, unique=True)
     name = models.CharField(max_length=100)
-    semester = models.PositiveSmallIntegerField()
+    semester = models.PositiveSmallIntegerField(choices=SEMESTER_CHOICES)
 
     class Meta:
         ordering = ["code"]
+        constraints = [models.CheckConstraint(condition=models.Q(semester__gte=1, semester__lte=8), name="subject_semester_1_to_8")]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -33,11 +37,12 @@ class Student(models.Model):
     usn = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
     section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="students")
-    semester = models.PositiveSmallIntegerField()
+    semester = models.PositiveSmallIntegerField(choices=SEMESTER_CHOICES)
     contact_no = models.CharField(max_length=15, blank=True)
 
     class Meta:
         ordering = ["usn"]
+        constraints = [models.CheckConstraint(condition=models.Q(semester__gte=1, semester__lte=8), name="student_semester_1_to_8")]
 
     def __str__(self):
         return f"{self.usn} - {self.name}"

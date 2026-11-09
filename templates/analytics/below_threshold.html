@@ -1,40 +1,34 @@
-
 {% extends "base.html" %}
-
+{% block title %}Students Below Attendance Threshold{% endblock %}
 {% block content %}
 <h1>Students Below Attendance Threshold</h1>
-
-{% if threshold is not None %}
-<p>Required attendance: {{ threshold }}%</p>
-{% endif %}
-
+<form method="get">
+    {{ filter_form.as_p }}
+    <button type="submit">Apply date range</button>
+    <a href="{% url 'analytics:below_threshold' %}">Clear</a>
+</form>
+{% if threshold is not None %}<p>Required attendance: {{ threshold }}%</p>{% endif %}
 {% if students %}
 <table>
-    <thead>
-        <tr>
-            <th>USN</th>
-            <th>Student Name</th>
-            <th>Section</th>
-            <th>Present</th>
-            <th>Total Classes</th>
-            <th>Attendance (%)</th>
-        </tr>
-    </thead>
+    <thead><tr><th>USN</th><th>Student Name</th><th>Section</th><th>Overall Present</th><th>Overall Classes</th><th>Overall Attendance</th><th>Below-threshold Subjects</th><th>History</th></tr></thead>
     <tbody>
-        {% for item in students %}
-        <tr>
-            <td>{{ item.student.usn }}</td>
-            <td>{{ item.student.name }}</td>
-            <td>{{ item.section.name }}</td>
-            <td>{{ item.present_count }}</td>
-            <td>{{ item.total_count }}</td>
-            <td>{{ item.percentage }}%</td>
-        </tr>
-        {% endfor %}
+    {% for item in students %}
+    <tr>
+        <td>{{ item.student.usn }}</td><td>{{ item.student.name }}</td><td>{{ item.section.name }}</td>
+        <td>{{ item.present_count }}</td><td>{{ item.total_count }}</td>
+        <td>{% if item.percentage is not None %}{% if item.overall_below %}<span class="low-attendance">{{ item.percentage }}%</span>{% else %}{{ item.percentage }}%{% endif %}{% else %}—{% endif %}</td>
+        <td>
+            {% for subject_row in item.subject_results %}
+                {{ subject_row.subject.code }}: <span class="low-attendance">{{ subject_row.percentage }}%</span> ({{ subject_row.present_count }}/{{ subject_row.total_count }}){% if not forloop.last %}<br>{% endif %}
+            {% empty %}None{% endfor %}
+        </td>
+        <td>
+            {% if user.role == "ADMIN" %}<a href="{% url 'analytics:student_attendance_history' item.student.pk %}">View history</a>
+            {% else %}{% for subject_row in item.subject_results %}<a href="{% url 'analytics:student_attendance_history' item.student.pk %}?subject={{ subject_row.subject.pk }}">{{ subject_row.subject.code }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
     </tbody>
 </table>
-{% else %}
-<p>No students are currently below the attendance threshold.</p>
-{% endif %}
-
+{% else %}<p>No students are currently below the attendance threshold.</p>{% endif %}
 {% endblock %}

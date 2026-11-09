@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block page_heading %}My profile{% endblock %}
+{% block content %}
+<div class="profile-heading"><div><span class="eyebrow">ADMINISTRATOR PROFILE</span><h1>{{ user.get_full_name|default:user.username }}</h1><p>{{ user.username }} · {{ user.get_role_display }}</p></div><span class="status-pill status-good">Active</span></div>
+<div class="profile-grid">
+<section class="profile-card"><h2>Account information</h2><dl class="profile-details">
+<div><dt>Username</dt><dd>{{ user.username }}</dd></div><div><dt>Email</dt><dd>{{ user.email|default:"Not added" }}</dd></div>
+<div><dt>Date of birth</dt><dd>{{ profile.date_of_birth|date:"d M Y"|default:"Not added" }}</dd></div>
+<div><dt>Age</dt><dd>{% if profile.age %}{{ profile.age }} years{% else %}Not added{% endif %}</dd></div>
+<div><dt>Date of joining</dt><dd>{{ profile.date_of_joining|date:"d M Y"|default:"Not added" }}</dd></div>
+<div><dt>Designation</dt><dd>{{ profile.designation|default:"Not added" }}</dd></div>
+<div><dt>Contact number</dt><dd>{{ profile.contact_no|default:"Not added" }}</dd></div>
+<div class="wide"><dt>Address</dt><dd>{{ profile.address|default:"Not added"|linebreaksbr }}</dd></div>
+</dl></section>
+<section class="profile-card profile-edit-card"><h2>Edit profile</h2><form method="post">{% csrf_token %}{% include "profiles/_form_fields.html" %}<button type="submit">Save profile</button></form></section>
+</div>
+{% endblock %}

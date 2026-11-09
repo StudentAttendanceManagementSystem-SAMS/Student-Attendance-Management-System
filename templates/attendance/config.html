@@ -1,22 +1,38 @@
-
 {% extends "base.html" %}
 
-{% block title %}Attendance Threshold Settings{% endblock %}
+{% block title %}Attendance Settings{% endblock %}
 
 {% block content %}
-<h1>Attendance Threshold Settings</h1>
+<h1>Attendance Settings</h1>
 
-<p>Configure the minimum attendance percentage required by the institution.</p>
+<p>Configure the institution-wide attendance threshold, correction window, and active academic-term dates. Attendance can only be marked within the configured term.</p>
 
 <form method="post">
     {% csrf_token %}
-
     {{ form.non_field_errors }}
 
     <div>
         {{ form.threshold_percentage.label_tag }}
         {{ form.threshold_percentage }}
         {{ form.threshold_percentage.errors }}
+    </div>
+
+    <div>
+        {{ form.correction_window_days.label_tag }}
+        {{ form.correction_window_days }}
+        {{ form.correction_window_days.errors }}
+    </div>
+
+    <div>
+        {{ form.term_start_date.label_tag }}
+        {{ form.term_start_date }}
+        {{ form.term_start_date.errors }}
+    </div>
+
+    <div>
+        {{ form.term_end_date.label_tag }}
+        {{ form.term_end_date }}
+        {{ form.term_end_date.errors }}
     </div>
 
     <button type="submit">Save Settings</button>

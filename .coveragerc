@@ -1,0 +1,28 @@
+[run]
+branch = True
+source =
+    accounts
+    masterdata
+    attendance
+    analytics
+    dashboard
+    profiles
+omit =
+    */migrations/*
+    */tests.py
+    */test_*.py
+    */apps.py
+    */admin.py
+    manage.py
+    sams/*
+    */__init__.py
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 2
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if TYPE_CHECKING:
+    raise NotImplementedError

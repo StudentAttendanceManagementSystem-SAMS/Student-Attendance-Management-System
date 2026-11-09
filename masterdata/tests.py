@@ -192,28 +192,77 @@ class FacultyPageTests(TestCase):
         self.assertContains(response, "Listed Faculty")
 
 
-class RoleBoundaryRegressionTests(TestCase):
+class MasterDataSprint2CompletionTests(TestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.client.force_login(self.admin)
 
-    def test_faculty_cannot_open_admin_student_list(self):
-        faculty = make_faculty()
-        self.client.force_login(faculty.user)
+    def test_student_list_can_filter_by_section_and_semester(self):
+        first = make_section(name="CSE-3A")
+        second = make_section(name="CSE-3B")
+        make_student(usn="PES2UG24CS701", section=first, semester=3)
+        make_student(usn="PES2UG24CS702", section=second, semester=5)
+        response = self.client.get(
+            reverse("masterdata:student_list"),
+            {"section": first.pk, "semester": 3},
+        )
+        self.assertContains(response, "PES2UG24CS701")
+        self.assertNotContains(response, "PES2UG24CS702")
 
-        response = self.client.get(reverse("masterdata:student_list"))
+    def test_section_list_displays_enrolment_count(self):
+        section = make_section(name="CSE-4A")
+        make_student(usn="PES2UG24CS703", section=section)
+        response = self.client.get(reverse("masterdata:section_list"))
+        self.assertContains(response, "CSE-4A")
+        self.assertContains(response, ">1<")
 
-        self.assertEqual(response.status_code, 403)
+    def test_subject_create_maps_selected_sections(self):
+        section = make_section(name="CSE-5A")
+        response = self.client.post(
+            reverse("masterdata:subject_create"),
+            {"code": "UE24CS888", "name": "Mapped Subject", "semester": 5,
+             "sections": [section.pk]},
+        )
+        self.assertRedirects(response, reverse("masterdata:subject_list"))
+        subject = Subject.objects.get(code="UE24CS888")
+        self.assertTrue(SubjectSection.objects.filter(subject=subject, section=section).exists())
 
-    def test_student_cannot_open_admin_student_list(self):
+    def test_assignment_automatically_ensures_subject_section_mapping(self):
+        faculty, subject, section = make_faculty(), make_subject(), make_section()
+        response = self.client.post(
+            reverse("masterdata:assignment_create"),
+            {"faculty": faculty.pk, "subject": subject.pk, "section": section.pk},
+        )
+        self.assertRedirects(response, reverse("masterdata:assignment_list"))
+        self.assertTrue(SubjectSection.objects.filter(subject=subject, section=section).exists())
+
+    def test_student_deactivation_disables_login_without_deleting_history_profile(self):
         student = make_student()
-        self.client.force_login(student.user)
+        response = self.client.post(
+            reverse("masterdata:student_deactivate", args=[student.pk])
+        )
+        self.assertRedirects(response, reverse("masterdata:student_list"))
+        student.user.refresh_from_db()
+        self.assertFalse(student.user.is_active)
+        self.assertTrue(Student.objects.filter(pk=student.pk).exists())
 
-        response = self.client.get(reverse("masterdata:student_list"))
+    def test_faculty_can_be_updated(self):
+        faculty = make_faculty()
+        response = self.client.post(
+            reverse("masterdata:faculty_update", args=[faculty.pk]),
+            {"name": "Updated Faculty", "department": faculty.department,
+             "contact_no": "9000000002"},
+        )
+        self.assertRedirects(response, reverse("masterdata:faculty_list"))
+        faculty.refresh_from_db()
+        self.assertEqual(faculty.name, "Updated Faculty")
 
-        self.assertEqual(response.status_code, 403)
-
-    def test_admin_can_open_admin_student_list(self):
-        admin = make_admin()
-        self.client.force_login(admin)
-
-        response = self.client.get(reverse("masterdata:student_list"))
-
-        self.assertEqual(response.status_code, 200)
+    def test_faculty_deactivation_preserves_profile_and_assignments(self):
+        faculty = make_faculty()
+        response = self.client.post(
+            reverse("masterdata:faculty_deactivate", args=[faculty.pk])
+        )
+        self.assertRedirects(response, reverse("masterdata:faculty_list"))
+        faculty.user.refresh_from_db()
+        self.assertFalse(faculty.user.is_active)
+        self.assertTrue(Faculty.objects.filter(pk=faculty.pk).exists())

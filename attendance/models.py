@@ -1,4 +1,3 @@
-
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -102,22 +101,14 @@ class AttendanceConfig(models.Model):
             ),
         ]
 
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(
-                    threshold_percentage__gte=0,
-                    threshold_percentage__lte=100,
-                ),
-                name="attendance_threshold_0_100",
-            ),
-        ]
-
     def __str__(self):
-        return f"Minimum attendance: {self.threshold_percentage}%"
+        return (
+            f"Minimum attendance: {self.threshold_percentage}% "
+            f"(correction window: {self.correction_window_days} days)"
+        )
 
     @classmethod
     def get_solo(cls):
-        """Return the single configuration, creating the default if needed."""
+        """Return the singleton attendance configuration (primary key 1)."""
         config, _ = cls.objects.get_or_create(pk=1)
         return config

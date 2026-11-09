@@ -5,7 +5,9 @@ from django.db import models
 
 class UserManager(DjangoUserManager):
     def create_superuser(self, username, email=None, password=None, **extra_fields):
-        extra_fields.setdefault("role", "ADMIN")
+        # A Django superuser must always be an application Administrator.
+        # Do not allow callers to create a superuser with a lower application role.
+        extra_fields["role"] = self.model.ADMIN
         return super().create_superuser(username, email, password, **extra_fields)
 
 

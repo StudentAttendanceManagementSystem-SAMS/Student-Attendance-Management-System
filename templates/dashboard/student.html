@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block page_heading %}Student dashboard{% endblock %}
+{% block content %}
+<div class="page-intro"><h1>Welcome, {{ student.name }}</h1><p>{{ student.usn }} · {{ student.section.name }} · Semester {{ student.semester }}</p></div>
+<div class="metric-grid">
+  <article class="metric-card"><span class="metric-label">Overall attendance</span><strong class="metric-value">{% if report.percentage is not None %}{{ report.percentage }}%{% else %}—{% endif %}</strong><span class="metric-note">Current attendance summary</span></article>
+  <article class="metric-card"><span class="metric-label">Required threshold</span><strong class="metric-value">{{ threshold }}%</strong><span class="metric-note">Institution attendance requirement</span></article>
+  <article class="metric-card"><span class="metric-label">Subjects below threshold</span><strong class="metric-value">{{ below_subjects|length }}</strong><span class="metric-note">Subjects requiring attention</span></article>
+</div>
+<section class="dashboard-section"><h2>Subject-wise attendance</h2>
+{% if report.subjects %}<table><thead><tr><th>Subject</th><th>Present</th><th>Classes held</th><th>Attendance</th><th>Status</th></tr></thead><tbody>
+{% for row in report.subjects %}<tr><td><strong>{{ row.subject.code }}</strong><br>{{ row.subject.name }}</td><td>{{ row.present_count }}</td><td>{{ row.total_count }}</td><td>{% if row.percentage is not None %}{% if row.percentage < threshold %}<span class="low-attendance">{{ row.percentage }}%</span>{% else %}<strong>{{ row.percentage }}%</strong>{% endif %}{% else %}—{% endif %}</td><td>{% if row in below_subjects %}<span class="status-pill status-low">Below threshold</span>{% else %}<span class="status-pill status-good">On track</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table>{% else %}<p>No subject attendance is available yet.</p>{% endif %}</section>
+<section class="dashboard-section"><h2>Subjects below threshold</h2>{% if below_subjects %}<ul>{% for row in below_subjects %}<li><strong>{{ row.subject.code }}</strong> — {{ row.percentage }}%</li>{% endfor %}</ul>{% else %}<p>No recorded subject attendance is below the configured threshold.</p>{% endif %}</section>
+<div class="quick-links" style="margin-top:18px"><a class="quick-link" href="{% url 'analytics:overall_attendance' %}"><strong>Full attendance report →</strong><span>View subject-wise and overall calculations</span></a><a class="quick-link" href="{% url 'analytics:my_attendance_history' %}"><strong>Attendance history →</strong><span>Review date-wise present and absent records</span></a></div>
+{% endblock %}
